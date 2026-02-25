@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameHub100 - 100个小游戏合集</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 GameHub100</h1>
+            <p>100个精选小游戏，免费畅玩！</p>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="搜索游戏...">
+                <button id="searchBtn">🔍</button>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <button class="category-btn active" data-category="all">全部游戏</button>
+            <button class="category-btn" data-category="puzzle">🧩 益智类</button>
+            <button class="category-btn" data-category="action">🎯 动作类</button>
+            <button class="category-btn" data-category="strategy">♟️ 策略类</button>
+            <button class="category-btn" data-category="reaction">⚡ 反应类</button>
+            <button class="category-btn" data-category="shooting">🎯 射击类</button>
+            <button class="category-btn" data-category="casual">🎲 休闲类</button>
+            <button class="category-btn" data-category="word">📝 文字类</button>
+            <button class="category-btn" data-category="card">🃏 卡牌类</button>
+            <button class="category-btn" data-category="sports">⚽ 体育类</button>
+            <button class="category-btn" data-category="creative">🎨 创意类</button>
+        </div>
+    </nav>
+
+    <main>
+        <div class="container">
+            <div class="game-grid" id="gameGrid">
+                <!-- 游戏卡片将通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2026 GameHub100 | 开源项目 | <a href="https://github.com/huejie/game-hub-100">GitHub</a></p>
+        </div>
+    </footer>
+
+    <script src="assets/js/games-data.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
