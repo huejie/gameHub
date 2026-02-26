@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>井字棋 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .status-container {
+            margin-bottom: 20px;
+        }
+
+        .status {
+            font-size: 1.3rem;
+            color: #764ba2;
+            font-weight: bold;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .score-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            gap: 15px;
+        }
+
+        .score-box {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            min-width: 90px;
+            flex: 1;
+        }
+
+        .score-label {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .score-value {
+            font-size: 1.6rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 8px;
+            background: #764ba2;
+            padding: 12px;
+            border-radius: 10px;
+            margin: 20px auto;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .cell {
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .cell:hover:not(.taken) {
+            background: #f0f0ff;
+            transform: scale(1.02);
+        }
+
+        .cell.taken {
+            cursor: not-allowed;
+        }
+
+        .cell.x {
+            color: #667eea;
+        }
+
+        .cell.o {
+            color: #e74c3c;
+        }
+
+        .cell.winning {
+            animation: pulse 0.5s ease-in-out infinite alternate;
+            background: #fffacd;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .back-btn {
+            background: #764ba2;
+        }
+
+        .back-btn:hover {
+            background: #6b4190;
+            box-shadow: 0 4px 12px rgba(118, 75, 162, 0.4);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.6;
+        }
+
+        .game-over-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px 50px;
+            border-radius: 15px;
+            text-align: center;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .game-over-content h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .game-over-content .result {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        .game-over-content.win h2 {
+            color: #27ae60;
+        }
+
+        .game-over-content.lose h2 {
+            color: #e74c3c;
+        }
+
+        .game-over-content.draw h2 {
+            color: #f39c12;
+        }
+
+        .first-player {
+            margin-bottom: 15px;
+        }
+
+        .first-player label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .first-player input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+
+        @media (max-width: 450px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            #game-board {
+                grid-template-columns: repeat(3, 80px);
+                grid-template-rows: repeat(3, 80px);
+                gap: 6px;
+                padding: 10px;
+            }
+
+            .cell {
+                font-size: 2.8rem;
+            }
+
+            .score-box {
+                padding: 10px 15px;
+                min-width: 75px;
+            }
+
+            .score-value {
+                font-size: 1.4rem;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 井字棋</h1>
+        
+        <div class="status-container">
+            <div class="status" id="status">你是 X，AI 是 O</div>
+        </div>
+
+        <div class="score-container">
+            <div class="score-box">
+                <div class="score-label">你赢</div>
+                <div class="score-value" id="player-wins">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">平局</div>
+                <div class="score-value" id="draws">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">AI赢</div>
+                <div class="score-value" id="ai-wins">0</div>
+            </div>
+        </div>
+
+        <div id="game-board"></div>
+
+        <div class="first-player">
+            <label>
+                <input type="checkbox" id="ai-first">
+                让AI先手
+            </label>
+        </div>
+
+        <div class="controls">
+            <button onclick="game.restart()">🔄 重新开始</button>
+            <button class="back-btn" onclick="window.location.href='../../index.html'">🏠 返回首页</button>
+        </div>
+
+        <div class="instructions">
+            <p>点击空格放置你的棋子 (X)</p>
+            <p>连成三个就获胜！</p>
+        </div>
+    </div>
+
+    <div class="game-over-modal" id="game-over-modal">
+        <div class="game-over-content" id="game-over-content">
+            <h2 id="result-title">游戏结束</h2>
+            <p class="result" id="result-text"></p>
+            <button onclick="game.restart()">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        class TicTacToe {
+            constructor() {
+                this.board = Array(9).fill(null);
+                this.currentPlayer = 'X'; // X is player, O is AI
+                this.gameOver = false;
+                this.winner = null;
+                this.winningCells = [];
+                
+                // Score tracking
+                this.scores = {
+                    player: 0,
+                    ai: 0,
+                    draws: 0
+                };
+                
+                // Load scores from localStorage
+                this.loadScores();
+                
+                this.init();
+            }
+
+            init() {
+                this.createBoard();
+                this.render();
+                this.updateScoreDisplay();
+                
+                // Check if AI should go first
+                if (document.getElementById('ai-first').checked) {
+                    setTimeout(() => this.aiMove(), 300);
+                }
+            }
+
+            createBoard() {
+                const boardElement = document.getElementById('game-board');
+                boardElement.innerHTML = '';
+                
+                for (let i = 0; i < 9; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.index = i;
+                    cell.addEventListener('click', (e) => this.handleClick(e));
+                    boardElement.appendChild(cell);
+                }
+            }
+
+            handleClick(e) {
+                if (this.gameOver) return;
+                
+                const index = parseInt(e.target.dataset.index);
+                
+                // Only allow player moves (X)
+                if (this.board[index] || this.currentPlayer !== 'X') return;
+                
+                this.makeMove(index, 'X');
+                
+                if (!this.gameOver) {
+                    this.currentPlayer = 'O';
+                    this.updateStatus('AI 思考中...');
+                    setTimeout(() => this.aiMove(), 500);
+                }
+            }
+
+            makeMove(index, player) {
+                this.board[index] = player;
+                this.render();
+                
+                const result = this.checkWinner();
+                if (result) {
+                    this.gameOver = true;
+                    this.winner = result.winner;
+                    this.winningCells = result.cells;
+                    this.highlightWinningCells();
+                    this.handleGameEnd();
+                } else if (this.board.every(cell => cell !== null)) {
+                    this.gameOver = true;
+                    this.winner = 'draw';
+                    this.handleGameEnd();
+                }
+            }
+
+            aiMove() {
+                if (this.gameOver) return;
+                
+                const move = this.getBestMove();
+                this.makeMove(move, 'O');
+                
+                if (!this.gameOver) {
+                    this.currentPlayer = 'X';
+                    this.updateStatus('轮到你了 (X)');
+                }
+            }
+
+            getBestMove() {
+                // Try to win
+                const winMove = this.findWinningMove('O');
+                if (winMove !== -1) return winMove;
+                
+                // Block player from winning
+                const blockMove = this.findWinningMove('X');
+                if (blockMove !== -1) return blockMove;
+                
+                // Take center if available
+                if (this.board[4] === null) return 4;
+                
+                // Take a corner
+                const corners = [0, 2, 6, 8];
+                const availableCorners = corners.filter(i => this.board[i] === null);
+                if (availableCorners.length > 0) {
+                    return availableCorners[Math.floor(Math.random() * availableCorners.length)];
+                }
+                
+                // Take any available side
+                const sides = [1, 3, 5, 7];
+                const availableSides = sides.filter(i => this.board[i] === null);
+                if (availableSides.length > 0) {
+                    return availableSides[Math.floor(Math.random() * availableSides.length)];
+                }
+                
+                // Fallback to any available cell
+                const available = this.board.map((cell, index) => cell === null ? index : -1).filter(i => i !== -1);
+                return available[0];
+            }
+
+            findWinningMove(player) {
+                const lines = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                    [0, 4, 8], [2, 4, 6] // diagonals
+                ];
+                
+                for (const line of lines) {
+                    const [a, b, c] = line;
+                    const cells = [this.board[a], this.board[b], this.board[c]];
+                    
+                    if (cells.filter(cell => cell === player).length === 2 && 
+                        cells.filter(cell => cell === null).length === 1) {
+                        // Found a winning/blocking move
+                        if (this.board[a] === null) return a;
+                        if (this.board[b] === null) return b;
+                        if (this.board[c] === null) return c;
+                    }
+                }
+                
+                return -1;
+            }
+
+            checkWinner() {
+                const lines = [
+                    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+                    [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+                    [0, 4, 8], [2, 4, 6] // diagonals
+                ];
+                
+                for (const line of lines) {
+                    const [a, b, c] = line;
+                    if (this.board[a] && 
+                        this.board[a] === this.board[b] && 
+                        this.board[a] === this.board[c]) {
+                        return { winner: this.board[a], cells: line };
+                    }
+                }
+                
+                return null;
+            }
+
+            highlightWinningCells() {
+                const cells = document.querySelectorAll('.cell');
+                this.winningCells.forEach(index => {
+                    cells[index].classList.add('winning');
+                });
+            }
+
+            handleGameEnd() {
+                let title, text, className;
+                
+                if (this.winner === 'X') {
+                    title = '🎉 你赢了！';
+                    text = '太棒了，你击败了AI！';
+                    className = 'win';
+                    this.scores.player++;
+                } else if (this.winner === 'O') {
+                    title = '😔 AI 获胜';
+                    text = '别灰心，再试一次！';
+                    className = 'lose';
+                    this.scores.ai++;
+                } else {
+                    title = '🤝 平局！';
+                    text = '势均力敌！';
+                    className = 'draw';
+                    this.scores.draws++;
+                }
+                
+                this.saveScores();
+                this.updateScoreDisplay();
+                
+                document.getElementById('result-title').textContent = title;
+                document.getElementById('result-text').textContent = text;
+                const content = document.getElementById('game-over-content');
+                content.className = 'game-over-content ' + className;
+                document.getElementById('game-over-modal').style.display = 'flex';
+            }
+
+            render() {
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach((cell, index) => {
+                    const value = this.board[index];
+                    cell.textContent = value || '';
+                    cell.className = 'cell';
+                    if (value) {
+                        cell.classList.add('taken', value.toLowerCase());
+                    }
+                });
+            }
+
+            updateStatus(text) {
+                document.getElementById('status').textContent = text;
+            }
+
+            updateScoreDisplay() {
+                document.getElementById('player-wins').textContent = this.scores.player;
+                document.getElementById('ai-wins').textContent = this.scores.ai;
+                document.getElementById('draws').textContent = this.scores.draws;
+            }
+
+            saveScores() {
+                localStorage.setItem('tictactoe-scores', JSON.stringify(this.scores));
+            }
+
+            loadScores() {
+                const saved = localStorage.getItem('tictactoe-scores');
+                if (saved) {
+                    this.scores = JSON.parse(saved);
+                }
+            }
+
+            restart() {
+                this.board = Array(9).fill(null);
+                this.currentPlayer = 'X';
+                this.gameOver = false;
+                this.winner = null;
+                this.winningCells = [];
+                
+                document.getElementById('game-over-modal').style.display = 'none';
+                this.createBoard();
+                this.render();
+                this.updateStatus('你是 X，AI 是 O');
+                
+                // Check if AI should go first
+                if (document.getElementById('ai-first').checked) {
+                    this.currentPlayer = 'O';
+                    setTimeout(() => this.aiMove(), 300);
+                }
+            }
+        }
+
+        const game = new TicTacToe();
+    </script>
+</body>
+</html>

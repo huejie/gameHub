@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .score-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        .score-box {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            min-width: 100px;
+        }
+
+        .score-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .score-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-template-rows: repeat(4, 100px);
+            gap: 10px;
+            background: #bbada0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px auto;
+        }
+
+        .tile {
+            background: rgba(238, 228, 218, 0.35);
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #776e65;
+            transition: all 0.15s;
+        }
+
+        .tile[data-value="2"] { background: #eee4da; color: #776e65; }
+        .tile[data-value="4"] { background: #ede0c8; color: #776e65; }
+        .tile[data-value="8"] { background: #f2b179; color: #f9f6f2; }
+        .tile[data-value="16"] { background: #f59563; color: #f9f6f2; }
+        .tile[data-value="32"] { background: #f67c5f; color: #f9f6f2; }
+        .tile[data-value="64"] { background: #f65e3b; color: #f9f6f2; }
+        .tile[data-value="128"] { background: #edcf72; color: #f9f6f2; font-size: 1.8rem; }
+        .tile[data-value="256"] { background: #edcc61; color: #f9f6f2; font-size: 1.8rem; }
+        .tile[data-value="512"] { background: #edc850; color: #f9f6f2; font-size: 1.8rem; }
+        .tile[data-value="1024"] { background: #edc53f; color: #f9f6f2; font-size: 1.5rem; }
+        .tile[data-value="2048"] { background: #edc22e; color: #f9f6f2; font-size: 1.5rem; }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .back-btn {
+            background: #764ba2;
+        }
+
+        .back-btn:hover {
+            background: #6b4190;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .game-over h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #f65e3b;
+        }
+
+        @media (max-width: 500px) {
+            #game-container {
+                grid-template-columns: repeat(4, 70px);
+                grid-template-rows: repeat(4, 70px);
+                gap: 8px;
+            }
+
+            .tile {
+                font-size: 1.5rem;
+            }
+
+            .tile[data-value="128"],
+            .tile[data-value="256"],
+            .tile[data-value="512"] {
+                font-size: 1.3rem;
+            }
+
+            .tile[data-value="1024"],
+            .tile[data-value="2048"] {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>2048</h1>
+        
+        <div class="score-container">
+            <div class="score-box">
+                <div class="score-label">分数</div>
+                <div class="score-value" id="score">0</div>
+            </div>
+            <div class="score-box">
+                <div class="score-label">最高分</div>
+                <div class="score-value" id="best-score">0</div>
+            </div>
+        </div>
+
+        <div id="game-container"></div>
+
+        <div class="controls">
+            <button onclick="game.restart()">重新开始</button>
+            <button class="back-btn" onclick="window.location.href='../../index.html'">返回首页</button>
+        </div>
+
+        <div class="instructions">
+            <p>使用方向键或滑动屏幕移动方块</p>
+            <p>相同数字的方块会合并，目标是达到2048！</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <div class="game-over-content">
+            <h2>游戏结束！</h2>
+            <p>你的分数: <span id="final-score">0</span></p>
+            <button onclick="game.restart()">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        class Game2048 {
+            constructor() {
+                this.size = 4;
+                this.grid = [];
+                this.score = 0;
+                this.bestScore = parseInt(localStorage.getItem('best2048')) || 0;
+                this.gameOver = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.createGrid();
+                this.addRandomTile();
+                this.addRandomTile();
+                this.render();
+                this.setupControls();
+                this.updateBestScore();
+            }
+
+            createGrid() {
+                this.grid = Array(this.size).fill(null).map(() => Array(this.size).fill(0));
+            }
+
+            addRandomTile() {
+                const emptyCells = [];
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (this.grid[i][j] === 0) {
+                            emptyCells.push({i, j});
+                        }
+                    }
+                }
+
+                if (emptyCells.length > 0) {
+                    const {i, j} = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                    this.grid[i][j] = Math.random() < 0.9 ? 2 : 4;
+                }
+            }
+
+            render() {
+                const container = document.getElementById('game-container');
+                container.innerHTML = '';
+
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        const tile = document.createElement('div');
+                        tile.className = 'tile';
+                        const value = this.grid[i][j];
+                        if (value > 0) {
+                            tile.textContent = value;
+                            tile.dataset.value = value;
+                        }
+                        container.appendChild(tile);
+                    }
+                }
+
+                document.getElementById('score').textContent = this.score;
+            }
+
+            setupControls() {
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameOver) return;
+
+                    switch(e.key) {
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            this.move('up');
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            this.move('down');
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            this.move('left');
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            this.move('right');
+                            break;
+                    }
+                });
+
+                // Touch support
+                let startX, startY;
+                const container = document.getElementById('game-container');
+                
+                container.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                });
+
+                container.addEventListener('touchend', (e) => {
+                    if (this.gameOver) return;
+
+                    const endX = e.changedTouches[0].clientX;
+                    const endY = e.changedTouches[0].clientY;
+                    const diffX = endX - startX;
+                    const diffY = endY - startY;
+
+                    if (Math.abs(diffX) > Math.abs(diffY)) {
+                        if (diffX > 0) this.move('right');
+                        else this.move('left');
+                    } else {
+                        if (diffY > 0) this.move('down');
+                        else this.move('up');
+                    }
+                });
+            }
+
+            move(direction) {
+                let moved = false;
+                const oldGrid = JSON.stringify(this.grid);
+
+                switch(direction) {
+                    case 'up':
+                        this.grid = this.transpose(this.grid);
+                        this.grid = this.grid.map(row => this.slide(row));
+                        this.grid = this.transpose(this.grid);
+                        break;
+                    case 'down':
+                        this.grid = this.transpose(this.grid);
+                        this.grid = this.grid.map(row => this.slide(row.reverse()).reverse());
+                        this.grid = this.transpose(this.grid);
+                        break;
+                    case 'left':
+                        this.grid = this.grid.map(row => this.slide(row));
+                        break;
+                    case 'right':
+                        this.grid = this.grid.map(row => this.slide(row.reverse()).reverse());
+                        break;
+                }
+
+                if (JSON.stringify(this.grid) !== oldGrid) {
+                    moved = true;
+                    this.addRandomTile();
+                    this.render();
+                    
+                    if (this.score > this.bestScore) {
+                        this.bestScore = this.score;
+                        localStorage.setItem('best2048', this.bestScore);
+                        this.updateBestScore();
+                    }
+
+                    if (this.isGameOver()) {
+                        this.gameOver = true;
+                        this.showGameOver();
+                    }
+                }
+            }
+
+            slide(row) {
+                let arr = row.filter(val => val !== 0);
+                
+                for (let i = 0; i < arr.length - 1; i++) {
+                    if (arr[i] === arr[i + 1]) {
+                        arr[i] *= 2;
+                        this.score += arr[i];
+                        arr.splice(i + 1, 1);
+                    }
+                }
+
+                while (arr.length < this.size) {
+                    arr.push(0);
+                }
+
+                return arr;
+            }
+
+            transpose(matrix) {
+                return matrix[0].map((_, i) => matrix.map(row => row[i]));
+            }
+
+            isGameOver() {
+                // Check for empty cells
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (this.grid[i][j] === 0) return false;
+                    }
+                }
+
+                // Check for possible merges
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (j < this.size - 1 && this.grid[i][j] === this.grid[i][j + 1]) return false;
+                        if (i < this.size - 1 && this.grid[i][j] === this.grid[i + 1][j]) return false;
+                    }
+                }
+
+                return true;
+            }
+
+            showGameOver() {
+                document.getElementById('final-score').textContent = this.score;
+                document.getElementById('game-over').style.display = 'flex';
+            }
+
+            restart() {
+                this.grid = [];
+                this.score = 0;
+                this.gameOver = false;
+                document.getElementById('game-over').style.display = 'none';
+                this.createGrid();
+                this.addRandomTile();
+                this.addRandomTile();
+                this.render();
+            }
+
+            updateBestScore() {
+                document.getElementById('best-score').textContent = this.bestScore;
+            }
+        }
+
+        const game = new Game2048();
+    </script>
+</body>
+</html>
