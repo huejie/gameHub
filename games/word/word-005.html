@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>字母排序 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            color: #2d3436;
+            text-align: center;
+        }
+        .timer {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 20px 0;
+        }
+        .letters-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            min-height: 60px;
+        }
+        .letter {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #00b894;
+            color: white;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: grab;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .letter:hover { transform: scale(1.1); background: #00cec9; }
+        .letter.dragging { opacity: 0.5; cursor: grabbing; }
+        .letter.correct { background: #27ae60; }
+        .letter.wrong { background: #e74c3c; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #00b894; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #00b894;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #00cec9; }
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            color: white;
+            text-decoration: none;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🔤 字母排序</h1>
+        <p>将字母按字母表顺序排列</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="round">1</div><div>回合</div></div>
+            <div class="stat"><div class="stat-value" id="streak">0</div><div>连胜</div></div>
+        </div>
+        <div class="timer" id="timer">30</div>
+        <p>按字母顺序排列以下字母:</p>
+        <div class="letters-container" id="lettersContainer"></div>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button onclick="checkOrder()">检查</button>
+            <button onclick="shuffleLetters()">打乱重来</button>
+            <button onclick="startGame()">新游戏</button>
+        </div>
+    </div>
+    <script>
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let currentLetters = [];
+        let score = 0;
+        let round = 1;
+        let streak = 0;
+        let timeLeft = 30;
+        let gameTimer = null;
+        let gameRunning = false;
+        
+        function getRandomLetters(count) {
+            const selected = [];
+            const available = alphabet.split('');
+            while (selected.length < count) {
+                const idx = Math.floor(Math.random() * available.length);
+                selected.push(available[idx]);
+                available.splice(idx, 1);
+            }
+            return selected;
+        }
+        
+        function shuffleArray(arr) {
+            const shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        function renderLetters() {
+            const container = document.getElementById('lettersContainer');
+            container.innerHTML = '';
+            
+            const shuffled = shuffleArray(currentLetters);
+            shuffled.forEach((letter, index) => {
+                const div = document.createElement('div');
+                div.className = 'letter';
+                div.textContent = letter;
+                div.draggable = true;
+                div.dataset.index = index;
+                
+                div.addEventListener('dragstart', handleDragStart);
+                div.addEventListener('dragover', handleDragOver);
+                div.addEventListener('drop', handleDrop);
+                div.addEventListener('dragend', handleDragEnd);
+                
+                container.appendChild(div);
+            });
+        }
+        
+        let draggedElement = null;
+        
+        function handleDragStart(e) {
+            draggedElement = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            if (draggedElement !== this) {
+                const container = document.getElementById('lettersContainer');
+                const allLetters = [...container.children];
+                const draggedIdx = allLetters.indexOf(draggedElement);
+                const targetIdx = allLetters.indexOf(this);
+                
+                if (draggedIdx < targetIdx) {
+                    container.insertBefore(draggedElement, this.nextSibling);
+                } else {
+                    container.insertBefore(draggedElement, this);
+                }
+            }
+        }
+        
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+            draggedElement = null;
+        }
+        
+        function checkOrder() {
+            const container = document.getElementById('lettersContainer');
+            const letters = [...container.children].map(el => el.textContent);
+            const sorted = [...currentLetters].sort();
+            const message = document.getElementById('message');
+            
+            let allCorrect = true;
+            [...container.children].forEach((el, i) => {
+                if (el.textContent === sorted[i]) {
+                    el.classList.add('correct');
+                    el.classList.remove('wrong');
+                } else {
+                    el.classList.add('wrong');
+                    el.classList.remove('correct');
+                    allCorrect = false;
+                }
+            });
+            
+            if (allCorrect) {
+                message.className = 'message success';
+                message.textContent = '✓ 正确！';
+                score += currentLetters.length * 10 + streak * 5;
+                streak++;
+                
+                setTimeout(() => {
+                    nextRound();
+                }, 1000);
+            } else {
+                message.className = 'message error';
+                message.textContent = '✗ 顺序不对，再试试！';
+                streak = 0;
+            }
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('streak').textContent = streak;
+        }
+        
+        function nextRound() {
+            round++;
+            const letterCount = Math.min(3 + Math.floor(round / 3), 8);
+            currentLetters = getRandomLetters(letterCount);
+            renderLetters();
+            
+            document.getElementById('round').textContent = round;
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function shuffleLetters() {
+            renderLetters();
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function startGame() {
+            clearInterval(gameTimer);
+            score = 0;
+            round = 1;
+            streak = 0;
+            timeLeft = 30;
+            gameRunning = true;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('round').textContent = '1';
+            document.getElementById('streak').textContent = '0';
+            document.getElementById('timer').textContent = '30';
+            document.getElementById('message').textContent = '';
+            
+            currentLetters = getRandomLetters(4);
+            renderLetters();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            alert(`游戏结束！\n最终得分: ${score}\n完成回合: ${round - 1}`);
+        }
+        
+        // Start
+        startGame();
+    </script>
+</body>
+</html>

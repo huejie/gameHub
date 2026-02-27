@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>句子重组 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 550px;
+            width: 100%;
+            color: #2d3436;
+        }
+        .sentence-area {
+            min-height: 80px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 15px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        .word-bank {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            min-height: 60px;
+        }
+        .word {
+            padding: 10px 18px;
+            background: #e84393;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+        .word:hover { transform: scale(1.05); background: #fd79a8; }
+        .word.used { opacity: 0.3; pointer-events: none; }
+        .word.in-sentence { background: #00b894; }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #e84393; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #e84393;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #fd79a8; }
+        .message {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .hint { text-align: center; color: #636e72; margin: 10px 0; font-style: italic; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>📝 句子重组</h1>
+        <p>将词语排列成正确的句子</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="level">1</div><div>关卡</div></div>
+            <div class="stat"><div class="stat-value" id="streak">0</div><div>连胜</div></div>
+        </div>
+        <p class="hint" id="hint">点击词语组成句子</p>
+        <div class="sentence-area" id="sentenceArea">
+            <span style="color:#95a5a6">点击下方词语...</span>
+        </div>
+        <div class="word-bank" id="wordBank"></div>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button onclick="checkSentence()">检查</button>
+            <button onclick="clearSentence()">清空</button>
+            <button onclick="nextSentence()">跳过</button>
+        </div>
+    </div>
+    <script>
+        const sentences = [
+            {words: ['我', '喜欢', '吃', '苹果'], correct: '我喜欢吃苹果', hint: '表达喜好'},
+            {words: ['今天', '天气', '很', '好'], correct: '今天天气很好', hint: '描述天气'},
+            {words: ['他', '正在', '读书'], correct: '他正在读书', hint: '正在做的动作'},
+            {words: ['我们', '一起', '去', '公园'], correct: '我们一起去公园', hint: '集体活动'},
+            {words: ['这个', '苹果', '很', '甜'], correct: '这个苹果很甜', hint: '描述味道'},
+            {words: ['她', '每天', '早上', '跑步'], correct: '她每天早上跑步', hint: '日常习惯'},
+            {words: ['小猫', '在', '睡觉'], correct: '小猫在睡觉', hint: '动物状态'},
+            {words: ['爸爸', '给我', '买了', '玩具'], correct: '爸爸给我买了玩具', hint: '收到礼物'},
+            {words: ['春天', '来了', '花儿', '开了'], correct: '春天来了花儿开了', hint: '季节变化'},
+            {words: ['我爱', '我的', '家人'], correct: '我爱我的家人', hint: '表达情感'},
+            {words: ['太阳', '从', '东方', '升起'], correct: '太阳从东方升起', hint: '自然现象'},
+            {words: ['小鸟', '在', '树上', '唱歌'], correct: '小鸟在树上唱歌', hint: '动物活动'},
+        ];
+        
+        let currentSentence = null;
+        let selectedWords = [];
+        let score = 0;
+        let level = 1;
+        let streak = 0;
+        let usedSentences = [];
+        
+        function shuffleArray(arr) {
+            const shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        function getRandomSentence() {
+            const available = sentences.filter(s => !usedSentences.includes(s.correct));
+            if (available.length === 0) {
+                usedSentences = [];
+                return sentences[Math.floor(Math.random() * sentences.length)];
+            }
+            return available[Math.floor(Math.random() * available.length)];
+        }
+        
+        function displayWords() {
+            const wordBank = document.getElementById('wordBank');
+            const shuffled = shuffleArray(currentSentence.words);
+            wordBank.innerHTML = '';
+            
+            shuffled.forEach((word, index) => {
+                const span = document.createElement('span');
+                span.className = 'word';
+                span.textContent = word;
+                span.dataset.index = index;
+                span.onclick = () => selectWord(word, span);
+                wordBank.appendChild(span);
+            });
+        }
+        
+        function selectWord(word, element) {
+            if (element.classList.contains('used')) return;
+            
+            element.classList.add('used');
+            selectedWords.push({word, element});
+            updateSentenceArea();
+        }
+        
+        function updateSentenceArea() {
+            const area = document.getElementById('sentenceArea');
+            if (selectedWords.length === 0) {
+                area.innerHTML = '<span style="color:#95a5a6">点击下方词语...</span>';
+            } else {
+                area.innerHTML = selectedWords.map((item, idx) => 
+                    `<span class="word in-sentence" onclick="removeWord(${idx})">${item.word}</span>`
+                ).join('');
+            }
+        }
+        
+        function removeWord(index) {
+            const removed = selectedWords.splice(index, 1)[0];
+            removed.element.classList.remove('used');
+            updateSentenceArea();
+        }
+        
+        function checkSentence() {
+            const message = document.getElementById('message');
+            const userSentence = selectedWords.map(item => item.word).join('');
+            
+            if (userSentence === currentSentence.correct) {
+                message.className = 'message success';
+                message.textContent = '✓ 正确！';
+                score += currentSentence.words.length * 10 + streak * 5;
+                streak++;
+                
+                if (streak % 5 === 0) level++;
+                
+                document.getElementById('score').textContent = score;
+                document.getElementById('streak').textContent = streak;
+                document.getElementById('level').textContent = level;
+                
+                setTimeout(nextSentence, 1500);
+            } else {
+                message.className = 'message error';
+                message.textContent = '✗ 顺序不对，再试试！';
+                streak = 0;
+                document.getElementById('streak').textContent = streak;
+            }
+        }
+        
+        function clearSentence() {
+            selectedWords.forEach(item => item.element.classList.remove('used'));
+            selectedWords = [];
+            updateSentenceArea();
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function nextSentence() {
+            currentSentence = getRandomSentence();
+            usedSentences.push(currentSentence.correct);
+            selectedWords = [];
+            
+            document.getElementById('hint').textContent = '提示: ' + currentSentence.hint;
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            
+            displayWords();
+            updateSentenceArea();
+        }
+        
+        nextSentence();
+    </script>
+</body>
+</html>

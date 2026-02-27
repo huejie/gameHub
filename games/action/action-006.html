@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跳跃忍者 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-container { position: relative; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; display: block; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #e74c3c; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #e74c3c;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #c0392b; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .info { font-size: 0.85rem; opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🥷 跳跃忍者</h1>
+        <p class="info">按空格或点击跳跃，躲避障碍物</p>
+    </div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="high">0</div><div>最高</div></div>
+    </div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="500" height="300"></canvas>
+    </div>
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ninja, obstacles, particles;
+        let score = 0, highScore = 0;
+        let gameRunning = false;
+        let groundY = canvas.height - 40;
+        
+        function init() {
+            ninja = {
+                x: 80,
+                y: groundY - 40,
+                width: 30,
+                height: 40,
+                vy: 0,
+                jumping: false,
+                runFrame: 0
+            };
+            obstacles = [];
+            particles = [];
+            score = 0;
+        }
+        
+        function jump() {
+            if (!ninja.jumping) {
+                ninja.vy = -15;
+                ninja.jumping = true;
+            }
+        }
+        
+        function spawnObstacle() {
+            if (Math.random() < 0.02) {
+                const type = Math.random();
+                let height, width;
+                if (type < 0.5) {
+                    height = 30 + Math.random() * 20;
+                    width = 20;
+                } else {
+                    height = 20;
+                    width = 40 + Math.random() * 20;
+                }
+                obstacles.push({
+                    x: canvas.width,
+                    y: groundY - height,
+                    width,
+                    height
+                });
+            }
+        }
+        
+        function createDust() {
+            for (let i = 0; i < 3; i++) {
+                particles.push({
+                    x: ninja.x,
+                    y: groundY - 5,
+                    dx: -2 - Math.random() * 2,
+                    dy: -Math.random() * 2,
+                    life: 1
+                });
+            }
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Ground
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(0, groundY, canvas.width, 40);
+            
+            // Update ninja
+            ninja.vy += 0.8;
+            ninja.y += ninja.vy;
+            
+            if (ninja.y >= groundY - ninja.height) {
+                ninja.y = groundY - ninja.height;
+                ninja.vy = 0;
+                if (ninja.jumping) {
+                    ninja.jumping = false;
+                    createDust();
+                }
+            }
+            
+            ninja.runFrame += 0.2;
+            
+            // Draw ninja
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(ninja.x, ninja.y, ninja.width, ninja.height);
+            // Head
+            ctx.fillStyle = '#fdcb6e';
+            ctx.fillRect(ninja.x + 5, ninja.y + 5, 20, 15);
+            // Eyes
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(ninja.x + 8, ninja.y + 8, 4, 4);
+            ctx.fillRect(ninja.x + 16, ninja.y + 8, 4, 4);
+            
+            // Update obstacles
+            obstacles.forEach(obs => {
+                obs.x -= 6;
+            });
+            obstacles = obstacles.filter(obs => obs.x + obs.width > 0);
+            
+            // Draw obstacles
+            ctx.fillStyle = '#e74c3c';
+            obstacles.forEach(obs => {
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+            
+            // Check collision
+            obstacles.forEach(obs => {
+                if (ninja.x + ninja.width > obs.x &&
+                    ninja.x < obs.x + obs.width &&
+                    ninja.y + ninja.height > obs.y) {
+                    gameRunning = false;
+                    if (score > highScore) highScore = score;
+                    document.getElementById('high').textContent = highScore;
+                    setTimeout(() => alert(`游戏结束！得分: ${score}`), 100);
+                }
+            });
+            
+            // Update particles
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life -= 0.05;
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = '#95a5a6';
+                ctx.fillRect(p.x, p.y, 4, 4);
+                ctx.globalAlpha = 1;
+            });
+            
+            spawnObstacle();
+            
+            score++;
+            document.getElementById('score').textContent = Math.floor(score / 10);
+            
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (gameRunning) jump();
+                else startGame();
+            }
+        });
+        
+        canvas.addEventListener('click', () => {
+            if (gameRunning) jump();
+            else startGame();
+        });
+        
+        function startGame() {
+            init();
+            gameRunning = true;
+            update();
+        }
+        
+        init();
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('按空格或点击开始', canvas.width/2, canvas.height/2);
+    </script>
+</body>
+</html>

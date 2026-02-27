@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跑酷游戏 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            display: block;
+            margin: 20px auto;
+            background: #87CEEB;
+        }
+
+        .controls {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .game-over p {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏃 跑酷游戏</h1>
+        <p>跳跃躲避障碍物，跑得越远越好！</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">距离</div>
+                <div class="info-value" id="distance">0m</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">金币</div>
+                <div class="info-value" id="coins">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">速度</div>
+                <div class="info-value" id="speed">1x</div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="500" height="300"></canvas>
+
+        <div class="controls">
+            空格键或点击屏幕跳跃
+        </div>
+
+        <div class="buttons">
+            <button class="btn-primary" id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>游戏结束！</h2>
+        <p>距离: <strong id="finalDistance">0m</strong></p>
+        <p>金币: <strong id="finalCoins">0</strong></p>
+        <button class="btn-primary" onclick="playAgain()">再玩一次</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = {
+            x: 50,
+            y: 250,
+            width: 40,
+            height: 50,
+            velocityY: 0,
+            isJumping: false,
+            jumpPower: -15,
+            gravity: 0.8
+        };
+        
+        let obstacles = [];
+        let coins = [];
+        let distance = 0;
+        let coinCount = 0;
+        let speed = 5;
+        let gameRunning = false;
+        let groundY = 250;
+        
+        function drawPlayer() {
+            ctx.fillStyle = '#4CAF50';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // 眼睛
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(player.x + 25, player.y + 10, 10, 10);
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.x + 28, player.y + 13, 4, 4);
+        }
+        
+        function drawObstacles() {
+            ctx.fillStyle = '#f44336';
+            obstacles.forEach(obs => {
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            });
+        }
+        
+        function drawCoins() {
+            ctx.fillStyle = '#FFD700';
+            coins.forEach(coin => {
+                ctx.beginPath();
+                ctx.arc(coin.x, coin.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.arc(coin.x, coin.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#FFD700';
+            });
+        }
+        
+        function drawGround() {
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(0, groundY + player.height, canvas.width, canvas.height - groundY - player.height);
+            
+            // 草地
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, groundY + player.height, canvas.width, 10);
+        }
+        
+        function updatePlayer() {
+            // 重力
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+            
+            // 地面检测
+            if (player.y >= groundY) {
+                player.y = groundY;
+                player.velocityY = 0;
+                player.isJumping = false;
+            }
+        }
+        
+        function updateObstacles() {
+            obstacles.forEach((obs, index) => {
+                obs.x -= speed;
+                
+                // 碰撞检测
+                if (player.x < obs.x + obs.width &&
+                    player.x + player.width > obs.x &&
+                    player.y + player.height > obs.y) {
+                    gameOver();
+                }
+                
+                // 移除超出屏幕的障碍物
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(index, 1);
+                }
+            });
+        }
+        
+        function updateCoins() {
+            coins.forEach((coin, index) => {
+                coin.x -= speed;
+                
+                // 收集金币
+                const dx = player.x + player.width / 2 - coin.x;
+                const dy = player.y + player.height / 2 - coin.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 30) {
+                    coins.splice(index, 1);
+                    coinCount++;
+                    document.getElementById('coins').textContent = coinCount;
+                }
+                
+                // 移除超出屏幕的金币
+                if (coin.x < -10) {
+                    coins.splice(index, 1);
+                }
+            });
+        }
+        
+        function spawnObstacle() {
+            if (Math.random() < 0.02) {
+                const height = Math.random() * 30 + 20;
+                obstacles.push({
+                    x: canvas.width,
+                    y: groundY + player.height - height,
+                    width: 30,
+                    height: height
+                });
+            }
+        }
+        
+        function spawnCoin() {
+            if (Math.random() < 0.03) {
+                coins.push({
+                    x: canvas.width,
+                    y: groundY - Math.random() * 80 - 20
+                });
+            }
+        }
+        
+        function jump() {
+            if (!player.isJumping && gameRunning) {
+                player.velocityY = player.jumpPower;
+                player.isJumping = true;
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawGround();
+            drawPlayer();
+            drawObstacles();
+            drawCoins();
+            
+            updatePlayer();
+            updateObstacles();
+            updateCoins();
+            spawnObstacle();
+            spawnCoin();
+            
+            // 更新距离
+            distance += speed / 10;
+            document.getElementById('distance').textContent = Math.floor(distance) + 'm';
+            
+            // 逐渐加速
+            if (distance % 100 < 0.5) {
+                speed += 0.5;
+                document.getElementById('speed').textContent = (speed / 5).toFixed(1) + 'x';
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function startGame() {
+            document.getElementById('startBtn').disabled = true;
+            gameRunning = true;
+            distance = 0;
+            coinCount = 0;
+            speed = 5;
+            obstacles = [];
+            coins = [];
+            player.y = groundY;
+            player.velocityY = 0;
+            player.isJumping = false;
+            
+            document.getElementById('distance').textContent = '0m';
+            document.getElementById('coins').textContent = '0';
+            document.getElementById('speed').textContent = '1x';
+            
+            gameLoop();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('finalDistance').textContent = Math.floor(distance) + 'm';
+            document.getElementById('finalCoins').textContent = coinCount;
+            document.getElementById('gameOver').classList.add('show');
+        }
+        
+        function playAgain() {
+            document.getElementById('gameOver').classList.remove('show');
+            startGame();
+        }
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                jump();
+            }
+        });
+        
+        // 点击/触摸控制
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jump();
+        });
+    </script>
+</body>
+</html>

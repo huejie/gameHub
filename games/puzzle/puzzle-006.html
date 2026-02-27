@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色记忆 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box { text-align: center; }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 120px);
+            gap: 15px;
+            margin: 30px auto;
+        }
+        .color-btn {
+            width: 120px;
+            height: 120px;
+            border-radius: 15px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .color-btn:hover { transform: scale(1.05); }
+        .color-btn.flash { filter: brightness(1.5); }
+        .color-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .red { background: #e74c3c; }
+        .blue { background: #3498db; }
+        .green { background: #2ecc71; }
+        .yellow { background: #f1c40f; }
+        .stats { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; }
+        .controls { margin-top: 20px; }
+        button {
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #6c5ce7;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #a29bfe; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .message { font-size: 1.3rem; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🎨 颜色记忆</h1>
+        <p>记住颜色顺序，依次点击！</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="level">1</div><div>等级</div></div>
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        </div>
+        <div class="message" id="message">点击"开始"游戏</div>
+        <div class="color-grid">
+            <button class="color-btn red" id="red" onclick="clickColor('red')" disabled></button>
+            <button class="color-btn blue" id="blue" onclick="clickColor('blue')" disabled></button>
+            <button class="color-btn green" id="green" onclick="clickColor('green')" disabled></button>
+            <button class="color-btn yellow" id="yellow" onclick="clickColor('yellow')" disabled></button>
+        </div>
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+        </div>
+    </div>
+    <script>
+        const colors = ['red', 'blue', 'green', 'yellow'];
+        let sequence = [];
+        let playerSequence = [];
+        let level = 1;
+        let score = 0;
+        let isPlaying = false;
+        let isShowingSequence = false;
+        
+        function flashColor(color, duration = 300) {
+            return new Promise(resolve => {
+                const btn = document.getElementById(color);
+                btn.classList.add('flash');
+                setTimeout(() => {
+                    btn.classList.remove('flash');
+                    setTimeout(resolve, 100);
+                }, duration);
+            });
+        }
+        
+        async function showSequence() {
+            isShowingSequence = true;
+            document.getElementById('message').textContent = '记住顺序...';
+            disableButtons(true);
+            
+            await new Promise(r => setTimeout(r, 500));
+            
+            for (let color of sequence) {
+                await flashColor(color, 400);
+            }
+            
+            isShowingSequence = false;
+            document.getElementById('message').textContent = '轮到你了！';
+            disableButtons(false);
+        }
+        
+        function clickColor(color) {
+            if (isShowingSequence) return;
+            
+            flashColor(color, 150);
+            playerSequence.push(color);
+            
+            const currentIndex = playerSequence.length - 1;
+            
+            if (playerSequence[currentIndex] !== sequence[currentIndex]) {
+                // Wrong!
+                gameOver();
+                return;
+            }
+            
+            if (playerSequence.length === sequence.length) {
+                // Correct sequence!
+                score += level * 10;
+                document.getElementById('score').textContent = score;
+                
+                setTimeout(() => {
+                    nextLevel();
+                }, 1000);
+            }
+        }
+        
+        function nextLevel() {
+            level++;
+            document.getElementById('level').textContent = level;
+            playerSequence = [];
+            
+            // Add new color to sequence
+            sequence.push(colors[Math.floor(Math.random() * colors.length)]);
+            
+            showSequence();
+        }
+        
+        function disableButtons(disabled) {
+            colors.forEach(color => {
+                document.getElementById(color).disabled = disabled;
+            });
+        }
+        
+        function startGame() {
+            level = 1;
+            score = 0;
+            sequence = [];
+            playerSequence = [];
+            isPlaying = true;
+            
+            document.getElementById('level').textContent = '1';
+            document.getElementById('score').textContent = '0';
+            
+            // Start with one color
+            sequence.push(colors[Math.floor(Math.random() * colors.length)]);
+            showSequence();
+        }
+        
+        function gameOver() {
+            isPlaying = false;
+            disableButtons(true);
+            document.getElementById('message').textContent = `游戏结束！最终得分: ${score}`;
+            
+            // Flash all colors red
+            colors.forEach(c => flashColor(c, 100));
+        }
+    </script>
+</body>
+</html>

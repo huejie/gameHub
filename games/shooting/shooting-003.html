@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>僵尸射击 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        .header {
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            background: rgba(0,0,0,0.3);
+        }
+        .header h1 { font-size: 2rem; margin-bottom: 5px; }
+        .header p { opacity: 0.8; }
+        .game-container {
+            position: relative;
+            margin: 20px;
+        }
+        canvas {
+            border: 3px solid #e94560;
+            border-radius: 10px;
+            cursor: crosshair;
+            background: #0f0f23;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #e94560;
+            color: white;
+            transition: all 0.3s;
+        }
+        button:hover { background: #ff6b6b; transform: scale(1.05); }
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin: 15px 0;
+            font-size: 1.2rem;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #e94560; }
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #e94560;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        .game-over h2 { color: #e94560; font-size: 2rem; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    <div class="header">
+        <h1>🧟 僵尸射击</h1>
+        <p>点击射击僵尸，不要让它们靠近！</p>
+    </div>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value" id="score">0</div>
+            <div>得分</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="lives">3</div>
+            <div>生命</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="wave">1</div>
+            <div>波次</div>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <div class="game-over" id="gameOver">
+            <h2>游戏结束！</h2>
+            <p>最终得分: <span id="finalScore">0</span></p>
+            <button onclick="restartGame()">重新开始</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+        <button onclick="pauseGame()">暂停</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let zombies = [];
+        let bullets = [];
+        let score = 0;
+        let lives = 3;
+        let wave = 1;
+        let gameRunning = false;
+        let gamePaused = false;
+        let spawnRate = 2000;
+        let lastSpawn = 0;
+        
+        // 响应式画布
+        function resizeCanvas() {
+            const maxWidth = Math.min(600, window.innerWidth - 40);
+            const ratio = maxWidth / 600;
+            canvas.style.width = maxWidth + 'px';
+            canvas.style.height = (400 * ratio) + 'px';
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 僵尸类
+        class Zombie {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 40) + 20;
+                this.y = -30;
+                this.size = 30 + Math.random() * 20;
+                this.speed = 1 + Math.random() * wave * 0.5;
+                this.health = Math.ceil(wave / 2);
+            }
+            
+            update() {
+                this.y += this.speed;
+            }
+            
+            draw() {
+                // 僵尸身体
+                ctx.fillStyle = '#4a7c59';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 眼睛
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(this.x - 8, this.y - 5, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + 8, this.y - 5, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 嘴巴
+                ctx.strokeStyle = '#2d3436';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y + 5, 8, 0, Math.PI);
+                ctx.stroke();
+            }
+            
+            isHit(x, y) {
+                const dist = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
+                return dist < this.size / 2;
+            }
+        }
+        
+        // 爆炸效果
+        let explosions = [];
+        class Explosion {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 5;
+                this.maxRadius = 40;
+                this.alpha = 1;
+            }
+            
+            update() {
+                this.radius += 3;
+                this.alpha -= 0.05;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = '#ff6b35';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            isDone() {
+                return this.alpha <= 0;
+            }
+        }
+        
+        function spawnZombie() {
+            if (Date.now() - lastSpawn > spawnRate) {
+                zombies.push(new Zombie());
+                lastSpawn = Date.now();
+            }
+        }
+        
+        function updateGame() {
+            if (!gameRunning || gamePaused) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            ctx.fillStyle = '#0f0f23';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 生成僵尸
+            spawnZombie();
+            
+            // 更新和绘制僵尸
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                zombies[i].update();
+                zombies[i].draw();
+                
+                // 僵尸到达底部
+                if (zombies[i].y > canvas.height + zombies[i].size) {
+                    zombies.splice(i, 1);
+                    lives--;
+                    document.getElementById('lives').textContent = lives;
+                    
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                }
+            }
+            
+            // 更新爆炸效果
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].update();
+                explosions[i].draw();
+                if (explosions[i].isDone()) {
+                    explosions.splice(i, 1);
+                }
+            }
+            
+            // 检查波次
+            if (score > 0 && score % 10 === 0) {
+                wave = Math.floor(score / 10) + 1;
+                spawnRate = Math.max(500, 2000 - wave * 150);
+                document.getElementById('wave').textContent = wave;
+            }
+            
+            requestAnimationFrame(updateGame);
+        }
+        
+        function shoot(e) {
+            if (!gameRunning || gamePaused) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            for (let i = zombies.length - 1; i >= 0; i--) {
+                if (zombies[i].isHit(x, y)) {
+                    zombies[i].health--;
+                    if (zombies[i].health <= 0) {
+                        explosions.push(new Explosion(zombies[i].x, zombies[i].y));
+                        zombies.splice(i, 1);
+                        score++;
+                        document.getElementById('score').textContent = score;
+                    }
+                    break;
+                }
+            }
+        }
+        
+        canvas.addEventListener('click', shoot);
+        
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            gamePaused = false;
+            updateGame();
+        }
+        
+        function pauseGame() {
+            gamePaused = !gamePaused;
+            if (!gamePaused && gameRunning) {
+                updateGame();
+            }
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+        
+        function restartGame() {
+            zombies = [];
+            explosions = [];
+            score = 0;
+            lives = 3;
+            wave = 1;
+            spawnRate = 2000;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('lives').textContent = '3';
+            document.getElementById('wave').textContent = '1';
+            document.getElementById('gameOver').style.display = 'none';
+            startGame();
+        }
+        
+        // 初始绘制
+        ctx.fillStyle = '#0f0f23';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#e94560';
+        ctx.font = '24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('点击"开始游戏"开始', canvas.width / 2, canvas.height / 2);
+    </script>
+</body>
+</html>

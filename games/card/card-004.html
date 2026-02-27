@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斗地主 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 10px;
+        }
+        .header { text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 1.5rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 10px; }
+        .card { display: inline-block; width: 50px; height: 70px; background: white; border-radius: 5px; margin: 2px; text-align: center; line-height: 70px; font-size: 14px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-10px); }
+        .card.selected { transform: translateY(-20px); background: #f1c40f; }
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2d3436; }
+        .hand { margin: 10px 0; text-align: center; }
+        .info { margin: 10px 0; text-align: center; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 5px; }
+        button:hover { background: #c0392b; }
+        .back-link { position: fixed; top: 10px; left: 10px; color: white; text-decoration: none; }
+        .stats { display: flex; justify-content: center; gap: 20px; margin: 10px 0; }
+        .stat { text-align: center; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🃏 简易斗地主</h1>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div>你的牌</div><span id="myCount">0</span>张</div>
+            <div class="stat"><div>电脑</div><span id="aiCount">0</span>张</div>
+        </div>
+        <div class="info" id="info">选择牌后点击出牌</div>
+        <div class="hand" id="aiHand"></div>
+        <div class="hand" id="myHand"></div>
+        <div style="text-align:center;">
+            <button onclick="playCards()">出牌</button>
+            <button onclick="pass()">不出</button>
+            <button onclick="newGame()">新游戏</button>
+        </div>
+    </div>
+    <script>
+        const suits = ['♠', '♥', '♣', '♦'];
+        const values = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
+        let deck = [], myHand = [], aiHand = [], selectedCards = [], lastPlay = [], lastPlayer = '';
+        
+        function createDeck() {
+            deck = [];
+            for (let s of suits) {
+                for (let v of values) {
+                    deck.push({suit: s, value: v, rank: values.indexOf(v)});
+                }
+            }
+            deck.push({suit: '🃏', value: '小王', rank: 13});
+            deck.push({suit: '🃏', value: '大王', rank: 14});
+        }
+        
+        function shuffle() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+        
+        function deal() {
+            myHand = deck.slice(0, 17);
+            aiHand = deck.slice(17, 34);
+            myHand.sort((a, b) => a.rank - b.rank);
+            aiHand.sort((a, b) => a.rank - b.rank);
+        }
+        
+        function renderHand(hand, elementId, clickable) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = '';
+            hand.forEach((card, idx) => {
+                const div = document.createElement('div');
+                div.className = 'card' + (card.suit === '♥' || card.suit === '♦' || card.value.includes('王') ? ' red' : ' black');
+                if (selectedCards.includes(idx) && elementId === 'myHand') div.classList.add('selected');
+                div.textContent = card.suit + card.value;
+                if (clickable) {
+                    div.onclick = () => toggleCard(idx);
+                }
+                el.appendChild(div);
+            });
+        }
+        
+        function toggleCard(idx) {
+            const i = selectedCards.indexOf(idx);
+            if (i > -1) selectedCards.splice(i, 1);
+            else selectedCards.push(idx);
+            renderHand(myHand, 'myHand', true);
+        }
+        
+        function getCardRank(card) {
+            return card.rank;
+        }
+        
+        function canPlay(cards) {
+            if (cards.length === 0) return false;
+            if (cards.length === 1) return true;
+            if (cards.length === 2 && cards[0].rank === cards[1].rank) return true;
+            if (cards.length >= 3) {
+                const ranks = cards.map(c => c.rank).sort((a, b) => a - b);
+                // 三张
+                if (cards.length === 3 && ranks[0] === ranks[2]) return true;
+                // 炸弹
+                if (cards.length === 4 && ranks[0] === ranks[3]) return true;
+                // 顺子
+                if (cards.length >= 5) {
+                    let isSequence = true;
+                    for (let i = 1; i < ranks.length; i++) {
+                        if (ranks[i] !== ranks[i-1] + 1 || ranks[i] > 11) {
+                            isSequence = false;
+                            break;
+                        }
+                    }
+                    if (isSequence) return true;
+                }
+            }
+            return false;
+        }
+        
+        function beats(cards, last) {
+            if (last.length === 0) return true;
+            if (cards.length !== last.length) {
+                // 炸弹可以打任何牌
+                if (cards.length === 4 && cards[0].rank === cards[3].rank) return true;
+                return false;
+            }
+            const maxRank = Math.max(...cards.map(c => c.rank));
+            const lastMaxRank = Math.max(...last.map(c => c.rank));
+            return maxRank > lastMaxRank;
+        }
+        
+        function playCards() {
+            if (selectedCards.length === 0) return;
+            
+            const cards = selectedCards.map(i => myHand[i]);
+            
+            if (!canPlay(cards)) {
+                document.getElementById('info').textContent = '无效的牌型！';
+                return;
+            }
+            
+            if (lastPlayer === 'ai' && !beats(cards, lastPlay)) {
+                document.getElementById('info').textContent = '打不过！';
+                return;
+            }
+            
+            selectedCards.sort((a, b) => b - a).forEach(i => myHand.splice(i, 1));
+            selectedCards = [];
+            lastPlay = cards;
+            lastPlayer = 'me';
+            
+            renderHand(myHand, 'myHand', true);
+            updateCounts();
+            
+            if (myHand.length === 0) {
+                document.getElementById('info').textContent = '🎉 你赢了！';
+                return;
+            }
+            
+            document.getElementById('info').textContent = '电脑思考中...';
+            setTimeout(aiPlay, 1000);
+        }
+        
+        function pass() {
+            if (lastPlayer === 'me') {
+                document.getElementById('info').textContent = '你必须出牌！';
+                return;
+            }
+            selectedCards = [];
+            renderHand(myHand, 'myHand', true);
+            setTimeout(aiPlay, 500);
+        }
+        
+        function aiPlay() {
+            if (lastPlayer === 'ai' || lastPlay.length === 0) {
+                // AI主动出牌
+                const card = aiHand[0];
+                aiHand.splice(0, 1);
+                lastPlay = [card];
+                lastPlayer = 'ai';
+                document.getElementById('info').textContent = '电脑出: ' + card.suit + card.value;
+            } else {
+                // AI跟牌
+                let played = false;
+                for (let i = 0; i < aiHand.length; i++) {
+                    if (aiHand[i].rank > lastPlay[0].rank) {
+                        const card = aiHand[i];
+                        aiHand.splice(i, 1);
+                        lastPlay = [card];
+                        lastPlayer = 'ai';
+                        document.getElementById('info').textContent = '电脑出: ' + card.suit + card.value;
+                        played = true;
+                        break;
+                    }
+                }
+                if (!played) {
+                    document.getElementById('info').textContent = '电脑不出';
+                    lastPlayer = 'me';
+                    lastPlay = [];
+                }
+            }
+            
+            renderHand(aiHand, 'aiHand', false);
+            updateCounts();
+            
+            if (aiHand.length === 0) {
+                document.getElementById('info').textContent = '电脑赢了！';
+            }
+        }
+        
+        function updateCounts() {
+            document.getElementById('myCount').textContent = myHand.length;
+            document.getElementById('aiCount').textContent = aiHand.length;
+        }
+        
+        function newGame() {
+            createDeck();
+            shuffle();
+            deal();
+            selectedCards = [];
+            lastPlay = [];
+            lastPlayer = '';
+            renderHand(myHand, 'myHand', true);
+            renderHand(aiHand, 'aiHand', false);
+            updateCounts();
+            document.getElementById('info').textContent = '选择牌后点击出牌';
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

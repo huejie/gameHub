@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错字纠正 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #00b894 0%, #00cec9 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 500px;
+            width: 100%;
+            color: #2d3436;
+            text-align: center;
+        }
+        .sentence-display {
+            font-size: 1.6rem;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            line-height: 1.8;
+        }
+        .wrong-char {
+            color: #e74c3c;
+            text-decoration: underline wavy #e74c3c;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .wrong-char:hover { background: #fadbd8; }
+        .wrong-char.corrected { color: #27ae60; text-decoration: none; font-weight: normal; }
+        .options { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+        .option {
+            padding: 12px 25px;
+            background: #00b894;
+            color: white;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        .option:hover { background: #00cec9; transform: scale(1.1); }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #00b894; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #00b894;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #00cec9; }
+        .message { padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>✏️ 错字纠正</h1>
+        <p>找出并纠正句子中的错别字</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="corrected">0</div><div>纠正</div></div>
+            <div class="stat"><div class="stat-value" id="timer">60</div><div>时间</div></div>
+        </div>
+        <p>点击错字，选择正确的字：</p>
+        <div class="sentence-display" id="sentenceDisplay"></div>
+        <div class="options" id="options"></div>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+            <button onclick="skipSentence()">跳过</button>
+        </div>
+    </div>
+    <script>
+        const sentences = [
+            {text: '我们要认真学{悉}', wrong: '悉', correct: '习', options: ['习', '悉', '息', '席']},
+            {text: '他{做}在椅子上看书', wrong: '做', correct: '坐', options: ['坐', '做', '作', '座']},
+            {text: '今天天气很{毫}', wrong: '毫', correct: '好', options: ['好', '毫', '号', '豪']},
+            {text: '小鸟在树上{唱}歌', wrong: '唱', correct: '唱', options: ['唱', '常', '长', '偿']},
+            {text: '我爱吃{频}果', wrong: '频', correct: '苹', options: ['苹', '频', '平', '凭']},
+            {text: '他在{跑}步', wrong: '跑', correct: '跑', options: ['跑', '泡', '炮', '袍']},
+            {text: '小朋友在{完}耍', wrong: '完', correct: '玩', options: ['玩', '完', '晚', '碗']},
+            {text: '春天花{开}了', wrong: '开', correct: '开', options: ['开', '凯', '恺', '楷']},
+            {text: '太阳从东方{升}起', wrong: '升', correct: '升', options: ['升', '生', '声', '胜']},
+            {text: '他在写{字}', wrong: '字', correct: '字', options: ['字', '自', '紫', '子']},
+            {text: '妈妈在{作}饭', wrong: '作', correct: '做', options: ['做', '作', '坐', '座']},
+            {text: '今天很{热}', wrong: '热', correct: '热', options: ['热', '惹', '若', '弱']}
+        ];
+        
+        let currentSentence = null;
+        let selectedWrong = null;
+        let score = 0;
+        let corrected = 0;
+        let timeLeft = 60;
+        let gameTimer = null;
+        let gameRunning = false;
+        let usedSentences = [];
+        
+        function getRandomSentence() {
+            const available = sentences.filter(s => !usedSentences.includes(s.text));
+            if (available.length === 0) {
+                usedSentences = [];
+                return sentences[Math.floor(Math.random() * sentences.length)];
+            }
+            return available[Math.floor(Math.random() * available.length)];
+        }
+        
+        function displaySentence() {
+            const display = document.getElementById('sentenceDisplay');
+            const text = currentSentence.text;
+            const wrongChar = currentSentence.wrong;
+            
+            let html = text.replace(`{${wrongChar}}`, 
+                `<span class="wrong-char" onclick="selectWrong(this)">${wrongChar}</span>`);
+            display.innerHTML = html;
+            
+            document.getElementById('options').innerHTML = '';
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function selectWrong(element) {
+            if (element.classList.contains('corrected')) return;
+            
+            document.querySelectorAll('.wrong-char').forEach(el => el.style.background = '');
+            element.style.background = '#fadbd8';
+            selectedWrong = element;
+            
+            showOptions();
+        }
+        
+        function showOptions() {
+            const optionsDiv = document.getElementById('options');
+            optionsDiv.innerHTML = '';
+            
+            currentSentence.options.forEach(opt => {
+                const span = document.createElement('span');
+                span.className = 'option';
+                span.textContent = opt;
+                span.onclick = () => checkAnswer(opt);
+                optionsDiv.appendChild(span);
+            });
+        }
+        
+        function checkAnswer(answer) {
+            const message = document.getElementById('message');
+            
+            if (answer === currentSentence.correct) {
+                message.className = 'message success';
+                message.textContent = '✓ 正确！';
+                score += 10;
+                corrected++;
+                selectedWrong.textContent = answer;
+                selectedWrong.classList.add('corrected');
+                
+                document.getElementById('score').textContent = score;
+                document.getElementById('corrected').textContent = corrected;
+                
+                setTimeout(nextSentence, 1000);
+            } else {
+                message.className = 'message error';
+                message.textContent = '✗ 再试试！';
+            }
+        }
+        
+        function nextSentence() {
+            currentSentence = getRandomSentence();
+            usedSentences.push(currentSentence.text);
+            selectedWrong = null;
+            displaySentence();
+        }
+        
+        function skipSentence() {
+            nextSentence();
+        }
+        
+        function startGame() {
+            clearInterval(gameTimer);
+            score = 0;
+            corrected = 0;
+            timeLeft = 60;
+            usedSentences = [];
+            gameRunning = true;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('corrected').textContent = '0';
+            document.getElementById('timer').textContent = '60';
+            
+            nextSentence();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            alert(`游戏结束！\n得分: ${score}\n纠正: ${corrected}个错字`);
+        }
+        
+        startGame();
+    </script>
+</body>
+</html>

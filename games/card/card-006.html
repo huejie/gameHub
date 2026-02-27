@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抽乌龟 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center; }
+        .card { display: inline-block; width: 60px; height: 80px; background: white; border-radius: 8px; margin: 3px; line-height: 80px; font-size: 18px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .card:hover { transform: scale(1.1); }
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2d3436; }
+        .card.back { background: #3498db; color: transparent; }
+        .hand { margin: 15px 0; min-height: 90px; }
+        .info { margin: 10px 0; font-size: 1.1rem; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 5px; }
+        button:hover { background: #c0392b; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🐢 抽乌龟</h1>
+        <p>抽对方的牌，凑成对子就扔掉，不要留乌龟！</p>
+    </div>
+    <div class="game-box">
+        <div class="info">电脑: <span id="aiCount">0</span>张牌</div>
+        <div class="hand" id="aiHand"></div>
+        <div class="info" id="status">点击对方牌堆抽牌</div>
+        <div class="hand" id="myHand"></div>
+        <div class="info">你的牌: <span id="myCount">0</span>张</div>
+        <button onclick="newGame()">新游戏</button>
+    </div>
+    <script>
+        const suits = ['♠', '♥', '♣', '♦'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q'];
+        let deck = [], myHand = [], aiHand = [];
+        let isMyTurn = true;
+        
+        function createDeck() {
+            deck = [];
+            for (let s of suits) {
+                for (let v of values) {
+                    deck.push({suit: s, value: v});
+                }
+            }
+            // Add joker (turtle)
+            deck.push({suit: '🐢', value: '乌龟'});
+            
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+        
+        function deal() {
+            myHand = deck.slice(0, Math.ceil(deck.length / 2));
+            aiHand = deck.slice(Math.ceil(deck.length / 2));
+            removePairs(myHand);
+            removePairs(aiHand);
+        }
+        
+        function removePairs(hand) {
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (let i = 0; i < hand.length; i++) {
+                    for (let j = i + 1; j < hand.length; j++) {
+                        if (hand[i].value === hand[j].value) {
+                            hand.splice(j, 1);
+                            hand.splice(i, 1);
+                            changed = true;
+                            break;
+                        }
+                    }
+                    if (changed) break;
+                }
+            }
+        }
+        
+        function render() {
+            const myDiv = document.getElementById('myHand');
+            const aiDiv = document.getElementById('aiHand');
+            
+            myDiv.innerHTML = '';
+            myHand.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'card' + (card.suit === '♥' || card.suit === '♦' ? ' red' : ' black');
+                div.textContent = card.suit + card.value;
+                myDiv.appendChild(div);
+            });
+            
+            aiDiv.innerHTML = '';
+            aiHand.forEach((card, idx) => {
+                const div = document.createElement('div');
+                div.className = 'card back';
+                div.textContent = '?';
+                if (isMyTurn) {
+                    div.onclick = () => drawCard(idx);
+                }
+                aiDiv.appendChild(div);
+            });
+            
+            document.getElementById('myCount').textContent = myHand.length;
+            document.getElementById('aiCount').textContent = aiHand.length;
+        }
+        
+        function drawCard(idx) {
+            if (!isMyTurn || aiHand.length === 0) return;
+            
+            const card = aiHand.splice(idx, 1)[0];
+            myHand.push(card);
+            document.getElementById('status').textContent = `你抽到了: ${card.suit}${card.value}`;
+            
+            removePairs(myHand);
+            render();
+            
+            if (checkWin()) return;
+            
+            isMyTurn = false;
+            document.getElementById('status').textContent = '电脑思考中...';
+            setTimeout(aiTurn, 1000);
+        }
+        
+        function aiTurn() {
+            if (myHand.length === 0) {
+                checkWin();
+                return;
+            }
+            
+            const idx = Math.floor(Math.random() * myHand.length);
+            const card = myHand.splice(idx, 1)[0];
+            aiHand.push(card);
+            document.getElementById('status').textContent = `电脑抽走了: ${card.suit}${card.value}`;
+            
+            removePairs(aiHand);
+            render();
+            
+            if (checkWin()) return;
+            
+            isMyTurn = true;
+            document.getElementById('status').textContent = '轮到你了，点击对方牌堆抽牌';
+        }
+        
+        function checkWin() {
+            if (myHand.length === 0) {
+                document.getElementById('status').textContent = '🎉 你赢了！没有乌龟！';
+                return true;
+            }
+            if (aiHand.length === 0) {
+                document.getElementById('status').textContent = '😢 电脑赢了！';
+                return true;
+            }
+            if (myHand.length === 1 && myHand[0].value === '乌龟') {
+                document.getElementById('status').textContent = '😢 你拿到乌龟了！';
+                return true;
+            }
+            if (aiHand.length === 1 && aiHand[0].value === '乌龟') {
+                document.getElementById('status').textContent = '🎉 电脑拿到乌龟了！你赢！';
+                return true;
+            }
+            return false;
+        }
+        
+        function newGame() {
+            createDeck();
+            deal();
+            isMyTurn = true;
+            document.getElementById('status').textContent = '点击对方牌堆抽牌';
+            render();
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

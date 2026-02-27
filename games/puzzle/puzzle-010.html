@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连连看 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            color: #2d3436;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(6, 50px);
+            gap: 5px;
+            margin: 20px auto;
+        }
+        .tile {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e84393;
+            color: white;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tile:hover { transform: scale(1.1); background: #fd79a8; }
+        .tile.selected { background: #00b894; transform: scale(1.1); }
+        .tile.matched { visibility: hidden; }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.3rem; font-weight: bold; color: #e84393; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #e84393;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #fd79a8; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🔗 连连看</h1>
+        <p>找到相同的图案配对消除</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="pairs">0</div><div>配对</div></div>
+            <div class="stat"><div class="stat-value" id="timer">120</div><div>时间</div></div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="controls">
+            <button onclick="newGame()">新游戏</button>
+            <button onclick="shuffle()">重排</button>
+        </div>
+    </div>
+    <script>
+        const symbols = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑', '🍌', '🥭', '🍍', '🥥'];
+        const gridSize = 6;
+        let grid = [];
+        let selected = null;
+        let score = 0;
+        let pairs = 0;
+        let timeLeft = 120;
+        let timer = null;
+
+        function shuffleArray(arr) {
+            const shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function generateGrid() {
+            const totalCells = gridSize * gridSize;
+            const pairsNeeded = totalCells / 2;
+            const selectedSymbols = symbols.slice(0, pairsNeeded);
+            let tiles = [...selectedSymbols, ...selectedSymbols];
+            tiles = shuffleArray(tiles);
+            
+            grid = [];
+            for (let i = 0; i < gridSize; i++) {
+                grid[i] = [];
+                for (let j = 0; j < gridSize; j++) {
+                    grid[i][j] = tiles[i * gridSize + j];
+                }
+            }
+        }
+
+        function renderGrid() {
+            const gridDiv = document.getElementById('grid');
+            gridDiv.innerHTML = '';
+            
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.textContent = grid[i][j];
+                    tile.dataset.row = i;
+                    tile.dataset.col = j;
+                    tile.onclick = () => selectTile(tile, i, j);
+                    gridDiv.appendChild(tile);
+                }
+            }
+        }
+
+        function selectTile(tile, row, col) {
+            if (tile.classList.contains('matched')) return;
+            
+            if (!selected) {
+                selected = {tile, row, col};
+                tile.classList.add('selected');
+            } else {
+                if (selected.row === row && selected.col === col) {
+                    tile.classList.remove('selected');
+                    selected = null;
+                    return;
+                }
+                
+                if (grid[selected.row][selected.col] === grid[row][col]) {
+                    // Match!
+                    selected.tile.classList.add('matched');
+                    tile.classList.add('matched');
+                    selected.tile.classList.remove('selected');
+                    
+                    score += 10;
+                    pairs++;
+                    document.getElementById('score').textContent = score;
+                    document.getElementById('pairs').textContent = pairs;
+                    
+                    if (pairs === (gridSize * gridSize) / 2) {
+                        clearInterval(timer);
+                        setTimeout(() => alert(`🎉 恭喜！得分: ${score}`), 100);
+                    }
+                } else {
+                    selected.tile.classList.remove('selected');
+                }
+                selected = null;
+            }
+        }
+
+        function shuffle() {
+            const remaining = [];
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const tile = document.querySelector(`[data-row="${i}"][data-col="${j}"]`);
+                    if (!tile.classList.contains('matched')) {
+                        remaining.push(grid[i][j]);
+                    }
+                }
+            }
+            
+            const shuffled = shuffleArray(remaining);
+            let idx = 0;
+            for (let i = 0; i < gridSize; i++) {
+                for (let j = 0; j < gridSize; j++) {
+                    const tile = document.querySelector(`[data-row="${i}"][data-col="${j}"]`);
+                    if (!tile.classList.contains('matched')) {
+                        grid[i][j] = shuffled[idx++];
+                        tile.textContent = grid[i][j];
+                    }
+                }
+            }
+        }
+
+        function newGame() {
+            clearInterval(timer);
+            score = 0;
+            pairs = 0;
+            timeLeft = 120;
+            selected = null;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('pairs').textContent = '0';
+            document.getElementById('timer').textContent = '120';
+            
+            generateGrid();
+            renderGrid();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    alert(`时间到！得分: ${score}`);
+                }
+            }, 1000);
+        }
+
+        newGame();
+    </script>
+</body>
+</html>

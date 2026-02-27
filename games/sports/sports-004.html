@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高尔夫 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #1e8449; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #1e8449; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>⛳ 迷你高尔夫</h1><p>拖拽球来击打，目标是洞！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="strokes">0</div><div>击数</div></div>
+        <div class="stat"><div class="stat-value" id="hole">1</div><div>洞</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div style="text-align:center;margin-top:15px;"><button onclick="resetHole()">重置</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = {x: 50, y: 350, vx: 0, vy: 0, r: 8};
+        let hole = {x: 350, y: 50, r: 15};
+        let isDragging = false;
+        let dragStart = {x: 0, y: 0};
+        let strokes = 0;
+        let currentHole = 1;
+        
+        const levels = [
+            {ball: {x: 50, y: 350}, hole: {x: 350, y: 50}, walls: []},
+            {ball: {x: 50, y: 200}, hole: {x: 350, y: 200}, walls: [{x: 180, y: 150, w: 40, h: 100}]},
+            {ball: {x: 200, y: 350}, hole: {x: 200, y: 50}, walls: [{x: 100, y: 150, w: 200, h: 20}]}
+        ];
+        
+        function loadHole(n) {
+            const level = levels[(n - 1) % levels.length];
+            ball = {...level.ball, vx: 0, vy: 0, r: 8};
+            hole = level.hole;
+            strokes = 0;
+            document.getElementById('strokes').textContent = '0';
+            document.getElementById('hole').textContent = n;
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw walls
+            const level = levels[(currentHole - 1) % levels.length];
+            ctx.fillStyle = '#1e8449';
+            level.walls.forEach(w => ctx.fillRect(w.x, w.y, w.w, w.h));
+            
+            // Draw hole
+            ctx.fillStyle = '#1a1a1a';
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, hole.r, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(hole.x, hole.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw flag
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(hole.x, hole.y - 40, 2, 40);
+            ctx.beginPath();
+            ctx.moveTo(hole.x + 2, hole.y - 40);
+            ctx.lineTo(hole.x + 25, hole.y - 30);
+            ctx.lineTo(hole.x + 2, hole.y - 20);
+            ctx.fill();
+            
+            // Draw ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Draw aim line
+            if (isDragging) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(ball.x + (ball.x - dragStart.x), ball.y + (ball.y - dragStart.y));
+                ctx.stroke();
+            }
+        }
+        
+        function update() {
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            ball.vx *= 0.98;
+            ball.vy *= 0.98;
+            
+            // Wall collision
+            if (ball.x < ball.r || ball.x > canvas.width - ball.r) ball.vx *= -1;
+            if (ball.y < ball.r || ball.y > canvas.height - ball.r) ball.vy *= -1;
+            
+            ball.x = Math.max(ball.r, Math.min(canvas.width - ball.r, ball.x));
+            ball.y = Math.max(ball.r, Math.min(canvas.height - ball.r, ball.y));
+            
+            // Check hole
+            const dist = Math.sqrt((ball.x - hole.x) ** 2 + (ball.y - hole.y) ** 2);
+            if (dist < hole.r && Math.abs(ball.vx) < 2 && Math.abs(ball.vy) < 2) {
+                currentHole++;
+                setTimeout(() => loadHole(currentHole), 500);
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+        
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const dist = Math.sqrt((x - ball.x) ** 2 + (y - ball.y) ** 2);
+            if (dist < 30 && Math.abs(ball.vx) < 0.5 && Math.abs(ball.vy) < 0.5) {
+                isDragging = true;
+                dragStart = {x, y};
+            }
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            const rect = canvas.getBoundingClientRect();
+            dragStart.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            dragStart.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                ball.vx = (ball.x - dragStart.x) * 0.1;
+                ball.vy = (ball.y - dragStart.y) * 0.1;
+                strokes++;
+                document.getElementById('strokes').textContent = strokes;
+            }
+            isDragging = false;
+        });
+        
+        function resetHole() {
+            loadHole(currentHole);
+        }
+        
+        loadHole(1);
+        update();
+    </script>
+</body>
+</html>

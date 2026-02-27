@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐键盘 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .keyboard { display: flex; margin: 20px 0; position: relative; }
+        .key { width: 50px; height: 180px; background: white; border: 1px solid #333; border-radius: 0 0 5px 5px; cursor: pointer; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px; font-weight: bold; color: #333; transition: all 0.1s; }
+        .key:hover { background: #f0f0f0; }
+        .key.active { background: #ddd; transform: translateY(2px); }
+        .key.black { position: absolute; width: 30px; height: 110px; background: #333; color: white; z-index: 1; }
+        .key.black:hover { background: #444; }
+        .key.black.active { background: #555; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .instructions { text-align: center; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎹 音乐键盘</h1><p>用键盘A-K弹奏音乐！</p></div>
+    <div class="instructions">按键: A S D F G H J K (白键) | W E T Y U (黑键)</div>
+    <div class="keyboard" id="keyboard"></div>
+    <script>
+        const notes = [
+            {note: 'C4', freq: 261.63, key: 'KeyA', black: false},
+            {note: 'C#4', freq: 277.18, key: 'KeyW', black: true, offset: 35},
+            {note: 'D4', freq: 293.66, key: 'KeyS', black: false},
+            {note: 'D#4', freq: 311.13, key: 'KeyE', black: true, offset: 85},
+            {note: 'E4', freq: 329.63, key: 'KeyD', black: false},
+            {note: 'F4', freq: 349.23, key: 'KeyF', black: false},
+            {note: 'F#4', freq: 369.99, key: 'KeyT', black: true, offset: 185},
+            {note: 'G4', freq: 392.00, key: 'KeyG', black: false},
+            {note: 'G#4', freq: 415.30, key: 'KeyY', black: true, offset: 235},
+            {note: 'A4', freq: 440.00, key: 'KeyH', black: false},
+            {note: 'A#4', freq: 466.16, key: 'KeyU', black: true, offset: 285},
+            {note: 'B4', freq: 493.88, key: 'KeyJ', black: false},
+            {note: 'C5', freq: 523.25, key: 'KeyK', black: false}
+        ];
+        
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const keyboard = document.getElementById('keyboard');
+        const keyElements = {};
+        
+        let whiteKeyIndex = 0;
+        
+        notes.forEach(n => {
+            const key = document.createElement('div');
+            key.className = 'key' + (n.black ? ' black' : '');
+            key.dataset.note = n.note;
+            key.dataset.freq = n.freq;
+            
+            if (n.black) {
+                key.style.left = n.offset + 'px';
+            } else {
+                key.style.marginRight = '-1px';
+                whiteKeyIndex++;
+            }
+            
+            key.textContent = n.key.replace('Key', '');
+            key.onclick = () => playNote(n.freq, key);
+            keyboard.appendChild(key);
+            keyElements[n.key] = key;
+        });
+        
+        function playNote(freq, keyEl) {
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = freq;
+            
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 1);
+            
+            if (keyEl) {
+                keyEl.classList.add('active');
+                setTimeout(() => keyEl.classList.remove('active'), 100);
+            }
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (keyElements[e.code]) {
+                playNote(notes.find(n => n.key === e.code).freq, keyElements[e.code]);
+            }
+        });
+    </script>
+</body>
+</html>

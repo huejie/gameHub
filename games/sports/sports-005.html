@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网球对战 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #2c3e50; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #e74c3c; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 50px; margin: 15px 0; }
+        .stat-value { font-size: 2rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎾 网球对战</h1><p>上下键移动球拍</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="p1">0</div><div>你</div></div>
+        <div class="stat"><div class="stat-value" id="p2">0</div><div>电脑</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="300"></canvas>
+    <div style="text-align:center;margin-top:15px;"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = {x: 200, y: 150, vx: 4, vy: 2, r: 8};
+        let player = {y: 130, h: 60, score: 0};
+        let ai = {y: 130, h: 60, score: 0};
+        let keys = {};
+        
+        function update() {
+            // Player movement
+            if (keys['ArrowUp']) player.y = Math.max(10, player.y - 5);
+            if (keys['ArrowDown']) player.y = Math.min(canvas.height - player.h - 10, player.y + 5);
+            
+            // AI movement
+            const aiTarget = ball.y - ai.h / 2;
+            ai.y += (aiTarget - ai.y) * 0.05;
+            
+            // Ball movement
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+            
+            // Top/bottom bounce
+            if (ball.y < ball.r || ball.y > canvas.height - ball.r) {
+                ball.vy *= -1;
+            }
+            
+            // Paddle collision
+            if (ball.x < 30 && ball.y > player.y && ball.y < player.y + player.h) {
+                ball.vx = Math.abs(ball.vx) * 1.05;
+                ball.vy += (ball.y - player.y - player.h / 2) * 0.1;
+            }
+            if (ball.x > canvas.width - 30 && ball.y > ai.y && ball.y < ai.y + ai.h) {
+                ball.vx = -Math.abs(ball.vx) * 1.05;
+                ball.vy += (ball.y - ai.y - ai.h / 2) * 0.1;
+            }
+            
+            // Score
+            if (ball.x < 0) {
+                ai.score++;
+                document.getElementById('p2').textContent = ai.score;
+                resetBall();
+            }
+            if (ball.x > canvas.width) {
+                player.score++;
+                document.getElementById('p1').textContent = player.score;
+                resetBall();
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+        
+        function draw() {
+            // Court
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Net
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // Paddles
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(10, player.y, 10, player.h);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(canvas.width - 20, ai.y, 10, ai.h);
+            
+            // Ball
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.vx = (Math.random() > 0.5 ? 1 : -1) * 4;
+            ball.vy = (Math.random() - 0.5) * 4;
+        }
+        
+        function newGame() {
+            player.score = 0;
+            ai.score = 0;
+            player.y = 120;
+            ai.y = 120;
+            document.getElementById('p1').textContent = '0';
+            document.getElementById('p2').textContent = '0';
+            resetBall();
+        }
+        
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+        
+        newGame();
+        update();
+    </script>
+</body>
+</html>

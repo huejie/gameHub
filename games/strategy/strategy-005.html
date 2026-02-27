@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>塔防 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #2d3436; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #27ae60; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🏰 塔防游戏</h1><p>点击放置炮塔，消灭敌人！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="gold">100</div><div>金币</div></div>
+        <div class="stat"><div class="stat-value" id="lives">10</div><div>生命</div></div>
+        <div class="stat"><div class="stat-value" id="wave">1</div><div>波次</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div style="text-align:center;margin-top:15px;">
+        <button onclick="selectTower('basic')">基础塔(30)</button>
+        <button onclick="selectTower('sniper')">狙击塔(50)</button>
+        <button onclick="startWave()">开始波次</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const TILE = 40;
+        
+        let towers = [], enemies = [], bullets = [];
+        let gold = 100, lives = 10, wave = 1, selectedTower = 'basic';
+        let waveRunning = false;
+        
+        const path = [{x:0,y:5},{x:3,y:5},{x:3,y:2},{x:7,y:2},{x:7,y:7},{x:10,y:7}];
+        
+        function drawPath() {
+            ctx.fillStyle = '#8B4513';
+            for (let i = 0; i < path.length - 1; i++) {
+                const dx = path[i+1].x > path[i].x ? 1 : (path[i+1].x < path[i].x ? -1 : 0);
+                const dy = path[i+1].y > path[i].y ? 1 : (path[i+1].y < path[i].y ? -1 : 0);
+                for (let x = path[i].x, y = path[i].y; 
+                     x !== path[i+1].x + dx || y !== path[i+1].y + dy; 
+                     x += dx, y += dy) {
+                    ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+                }
+            }
+        }
+        
+        function draw() {
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            drawPath();
+            
+            // Draw towers
+            towers.forEach(t => {
+                ctx.fillStyle = t.type === 'basic' ? '#3498db' : '#9b59b6';
+                ctx.beginPath();
+                ctx.arc(t.x * TILE + TILE/2, t.y * TILE + TILE/2, 15, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw enemies
+            enemies.forEach(e => {
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(e.x - 15, e.y - 15, 30 * (e.hp / e.maxHp), 3);
+            });
+            
+            // Draw bullets
+            bullets.forEach(b => {
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function update() {
+            // Move enemies
+            enemies.forEach(e => {
+                const target = path[Math.min(e.pathIndex + 1, path.length - 1)];
+                const tx = target.x * TILE + TILE/2;
+                const ty = target.y * TILE + TILE/2;
+                const dist = Math.sqrt((tx - e.x) ** 2 + (ty - e.y) ** 2);
+                
+                if (dist < 5) {
+                    e.pathIndex++;
+                    if (e.pathIndex >= path.length - 1) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        e.hp = 0;
+                    }
+                } else {
+                    e.x += (tx - e.x) / dist * e.speed;
+                    e.y += (ty - e.y) / dist * e.speed;
+                }
+            });
+            
+            enemies = enemies.filter(e => e.hp > 0);
+            
+            // Tower shooting
+            towers.forEach(t => {
+                if (!t.lastShot) t.lastShot = 0;
+                if (Date.now() - t.lastShot > (t.type === 'basic' ? 500 : 1000)) {
+                    let target = null, minDist = Infinity;
+                    enemies.forEach(e => {
+                        const dist = Math.sqrt((e.x - t.x * TILE - TILE/2) ** 2 + (e.y - t.y * TILE - TILE/2) ** 2);
+                        if (dist < minDist && dist < 150) {
+                            minDist = dist;
+                            target = e;
+                        }
+                    });
+                    if (target) {
+                        bullets.push({
+                            x: t.x * TILE + TILE/2,
+                            y: t.y * TILE + TILE/2,
+                            target: target,
+                            damage: t.type === 'basic' ? 10 : 30
+                        });
+                        t.lastShot = Date.now();
+                    }
+                }
+            });
+            
+            // Move bullets
+            bullets.forEach(b => {
+                const dx = b.target.x - b.x;
+                const dy = b.target.y - b.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 10) {
+                    b.target.hp -= b.damage;
+                    if (b.target.hp <= 0) {
+                        gold += 10;
+                        document.getElementById('gold').textContent = gold;
+                    }
+                    b.done = true;
+                } else {
+                    b.x += dx / dist * 8;
+                    b.y += dy / dist * 8;
+                }
+            });
+            
+            bullets = bullets.filter(b => !b.done);
+            
+            if (waveRunning && enemies.length === 0) {
+                waveRunning = false;
+                wave++;
+                gold += 20;
+                document.getElementById('wave').textContent = wave;
+                document.getElementById('gold').textContent = gold;
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+        
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width) / TILE);
+            const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height) / TILE);
+            
+            const cost = selectedTower === 'basic' ? 30 : 50;
+            if (gold >= cost && !towers.some(t => t.x === x && t.y === y)) {
+                towers.push({x, y, type: selectedTower});
+                gold -= cost;
+                document.getElementById('gold').textContent = gold;
+            }
+        });
+        
+        function selectTower(type) { selectedTower = type; }
+        
+        function startWave() {
+            if (waveRunning) return;
+            waveRunning = true;
+            for (let i = 0; i < 5 + wave * 2; i++) {
+                setTimeout(() => {
+                    enemies.push({
+                        x: path[0].x * TILE + TILE/2,
+                        y: path[0].y * TILE + TILE/2,
+                        pathIndex: 0,
+                        hp: 20 + wave * 10,
+                        maxHp: 20 + wave * 10,
+                        speed: 1
+                    });
+                }, i * 500);
+            }
+        }
+        
+        update();
+    </script>
+</body>
+</html>

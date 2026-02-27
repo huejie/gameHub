@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猜牌游戏 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; max-width: 400px; }
+        .card-display { margin: 20px 0; }
+        .card { width: 120px; height: 160px; background: white; border-radius: 15px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .card.back { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .card .suit { font-size: 3rem; }
+        .card .value { font-size: 2.5rem; }
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2d3436; }
+        .buttons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; background: #f1c40f; color: #2d3436; font-weight: bold; font-size: 1rem; }
+        button:hover { background: #f39c12; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        .message { font-size: 1.2rem; margin: 15px 0; min-height: 30px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🃏 猜牌游戏</h1><p>猜测下一张牌是红还是黑</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="streak">0</div><div>连胜</div></div>
+        </div>
+        <div class="card-display">
+            <div class="card back" id="card"><span style="font-size:3rem;">?</span></div>
+        </div>
+        <div class="message" id="message">猜猜这张牌是红色还是黑色？</div>
+        <div class="buttons">
+            <button onclick="guess('red')" style="background:#e74c3c;color:white;">红色 ♥♦</button>
+            <button onclick="guess('black')" style="background:#2d3436;color:white;">黑色 ♠♣</button>
+        </div>
+        <button onclick="newGame()">新游戏</button>
+    </div>
+    <script>
+        const suits = ['♠', '♥', '♣', '♦'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        let score = 0, streak = 0, currentCard = null;
+        
+        function drawCard() {
+            const suit = suits[Math.floor(Math.random() * 4)];
+            const value = values[Math.floor(Math.random() * 13)];
+            return {suit, value, isRed: suit === '♥' || suit === '♦'};
+        }
+        
+        function revealCard() {
+            const card = document.getElementById('card');
+            card.className = 'card' + (currentCard.isRed ? ' red' : ' black');
+            card.innerHTML = `<div class="suit">${currentCard.suit}</div><div class="value">${currentCard.value}</div>`;
+        }
+        
+        function guess(color) {
+            currentCard = drawCard();
+            revealCard();
+            
+            const message = document.getElementById('message');
+            const correct = (color === 'red' && currentCard.isRed) || (color === 'black' && !currentCard.isRed);
+            
+            if (correct) {
+                streak++;
+                score += 10 + streak * 5;
+                message.textContent = '🎉 正确！继续猜下一张';
+                message.style.color = '#2ecc71';
+            } else {
+                streak = 0;
+                message.textContent = '😢 错误！重新开始';
+                message.style.color = '#e74c3c';
+            }
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('streak').textContent = streak;
+            
+            setTimeout(() => {
+                const card = document.getElementById('card');
+                card.className = 'card back';
+                card.innerHTML = '<span style="font-size:3rem;">?</span>';
+                message.textContent = '猜猜这张牌是红色还是黑色？';
+                message.style.color = 'white';
+            }, 1500);
+        }
+        
+        function newGame() {
+            score = 0;
+            streak = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('streak').textContent = '0';
+            document.getElementById('message').textContent = '猜猜这张牌是红色还是黑色？';
+            document.getElementById('message').style.color = 'white';
+            const card = document.getElementById('card');
+            card.className = 'card back';
+            card.innerHTML = '<span style="font-size:3rem;">?</span>';
+        }
+    </script>
+</body>
+</html>

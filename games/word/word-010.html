@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>速记挑战 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #fdcb6e 0%, #f39c12 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #2d3436;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .memory-display {
+            font-size: 2.5rem;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 5px;
+            font-family: monospace;
+            min-height: 80px;
+        }
+        .input-area { margin: 20px 0; }
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.5rem;
+            border: 2px solid #f39c12;
+            border-radius: 10px;
+            text-align: center;
+            letter-spacing: 3px;
+            font-family: monospace;
+        }
+        input:focus { outline: none; border-color: #e67e22; }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f39c12; }
+        .timer { font-size: 3rem; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f39c12;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #e67e22; }
+        .message { padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: #2d3436; text-decoration: none; }
+        .hidden { visibility: hidden; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🧠 速记挑战</h1>
+        <p>记住显示的字符序列</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="level">1</div><div>等级</div></div>
+            <div class="stat"><div class="stat-value" id="streak">0</div><div>连胜</div></div>
+        </div>
+        <div class="timer" id="countdown">3</div>
+        <div class="memory-display" id="memoryDisplay">准备...</div>
+        <div class="input-area" id="inputArea" style="display:none;">
+            <input type="text" id="userInput" placeholder="输入你记住的字符" autocomplete="off">
+        </div>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+        </div>
+    </div>
+    <script>
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        
+        let currentSequence = '';
+        let score = 0;
+        let level = 1;
+        let streak = 0;
+        let displayTime = 3000;
+        let gamePhase = 'idle'; // idle, showing, input
+        
+        function generateSequence(length) {
+            let seq = '';
+            for (let i = 0; i < length; i++) {
+                seq += chars[Math.floor(Math.random() * chars.length)];
+            }
+            return seq;
+        }
+        
+        function startRound() {
+            const length = 3 + Math.floor(level / 2);
+            currentSequence = generateSequence(length);
+            
+            const display = document.getElementById('memoryDisplay');
+            const inputArea = document.getElementById('inputArea');
+            const countdown = document.getElementById('countdown');
+            const input = document.getElementById('userInput');
+            
+            inputArea.style.display = 'none';
+            input.value = '';
+            document.getElementById('message').textContent = '';
+            
+            // Countdown
+            let count = 3;
+            countdown.textContent = count;
+            display.textContent = '准备...';
+            
+            const countInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdown.textContent = count;
+                } else {
+                    clearInterval(countInterval);
+                    showSequence();
+                }
+            }, 1000);
+        }
+        
+        function showSequence() {
+            const display = document.getElementById('memoryDisplay');
+            const countdown = document.getElementById('countdown');
+            
+            display.textContent = currentSequence;
+            countdown.textContent = '记住!';
+            gamePhase = 'showing';
+            
+            setTimeout(() => {
+                display.textContent = '???';
+                countdown.textContent = '输入!';
+                document.getElementById('inputArea').style.display = 'block';
+                document.getElementById('userInput').focus();
+                gamePhase = 'input';
+            }, displayTime);
+        }
+        
+        function checkAnswer() {
+            const input = document.getElementById('userInput');
+            const message = document.getElementById('message');
+            const userAnswer = input.value.toUpperCase();
+            
+            if (userAnswer === currentSequence) {
+                message.className = 'message success';
+                message.textContent = '✓ 正确！';
+                score += currentSequence.length * 10 + streak * 5;
+                streak++;
+                
+                if (streak % 3 === 0) {
+                    level++;
+                    displayTime = Math.max(1000, displayTime - 200);
+                }
+                
+                document.getElementById('score').textContent = score;
+                document.getElementById('streak').textContent = streak;
+                document.getElementById('level').textContent = level;
+                
+                setTimeout(startRound, 1500);
+            } else {
+                message.className = 'message error';
+                message.textContent = `✗ 正确答案: ${currentSequence}`;
+                streak = 0;
+                displayTime = 3000;
+                document.getElementById('streak').textContent = streak;
+                
+                setTimeout(startRound, 2000);
+            }
+        }
+        
+        document.getElementById('userInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter' && gamePhase === 'input') {
+                checkAnswer();
+            }
+        });
+        
+        function startGame() {
+            score = 0;
+            level = 1;
+            streak = 0;
+            displayTime = 3000;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('level').textContent = '1';
+            document.getElementById('streak').textContent = '0';
+            
+            startRound();
+        }
+        
+        // Initial
+        document.getElementById('memoryDisplay').textContent = '点击"开始游戏"';
+    </script>
+</body>
+</html>

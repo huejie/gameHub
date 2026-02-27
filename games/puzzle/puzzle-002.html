@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字华容道 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px auto;
+            padding: 15px;
+            background: #2c3e50;
+            border-radius: 10px;
+            max-width: 400px;
+        }
+
+        .tile {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 2em;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+
+        .tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .tile.empty {
+            background: rgba(255, 255, 255, 0.1);
+            cursor: default;
+        }
+
+        .tile.empty:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .win-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .win-message.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .win-message h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .win-message p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧩 数字华容道</h1>
+        <p>将数字按顺序排列，空格移到右下角</p>
+
+        <div class="info">
+            <div class="info-item">
+                <div class="info-label">移动次数</div>
+                <div class="info-value" id="moves">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">用时</div>
+                <div class="info-value" id="time">00:00</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="board"></div>
+
+        <div class="buttons">
+            <button class="btn-primary" onclick="shuffleBoard()">🔀 打乱</button>
+            <button class="btn-secondary" onclick="resetGame()">🔄 重置</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <div class="win-message" id="winMessage">
+        <h2>🎉 恭喜完成！</h2>
+        <p>移动次数: <span id="finalMoves">0</span></p>
+        <p>用时: <span id="finalTime">00:00</span></p>
+        <button class="btn-primary" onclick="playAgain()">再玩一次</button>
+    </div>
+
+    <script>
+        let tiles = [];
+        let emptyIndex = 15;
+        let moves = 0;
+        let seconds = 0;
+        let timer = null;
+        let gameStarted = false;
+
+        // 初始化游戏
+        function initGame() {
+            tiles = [];
+            for (let i = 1; i <= 15; i++) {
+                tiles.push(i);
+            }
+            tiles.push(0); // 0 表示空格
+            emptyIndex = 15;
+            renderBoard();
+        }
+
+        // 渲染游戏板
+        function renderBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+
+            tiles.forEach((tile, index) => {
+                const div = document.createElement('div');
+                div.className = tile === 0 ? 'tile empty' : 'tile';
+                div.textContent = tile === 0 ? '' : tile;
+                div.onclick = () => moveTile(index);
+                board.appendChild(div);
+            });
+        }
+
+        // 移动方块
+        function moveTile(index) {
+            if (!canMove(index)) return;
+
+            if (!gameStarted) {
+                startTimer();
+                gameStarted = true;
+            }
+
+            // 交换方块
+            [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+            emptyIndex = index;
+            moves++;
+            document.getElementById('moves').textContent = moves;
+            renderBoard();
+
+            // 检查是否获胜
+            if (checkWin()) {
+                stopTimer();
+                showWinMessage();
+            }
+        }
+
+        // 检查是否可以移动
+        function canMove(index) {
+            const row = Math.floor(index / 4);
+            const col = index % 4;
+            const emptyRow = Math.floor(emptyIndex / 4);
+            const emptyCol = emptyIndex % 4;
+
+            // 检查是否相邻
+            const rowDiff = Math.abs(row - emptyRow);
+            const colDiff = Math.abs(col - emptyCol);
+
+            return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+        }
+
+        // 打乱游戏板
+        function shuffleBoard() {
+            resetGame();
+            gameStarted = false;
+
+            // 随机移动100次来打乱
+            for (let i = 0; i < 100; i++) {
+                const validMoves = getValidMoves();
+                const randomMove = validMoves[Math.floor(Math.random() * validMoves.length)];
+                [tiles[randomMove], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[randomMove]];
+                emptyIndex = randomMove;
+            }
+
+            renderBoard();
+        }
+
+        // 获取有效移动
+        function getValidMoves() {
+            const moves = [];
+            const row = Math.floor(emptyIndex / 4);
+            const col = emptyIndex % 4;
+
+            if (row > 0) moves.push(emptyIndex - 4);
+            if (row < 3) moves.push(emptyIndex + 4);
+            if (col > 0) moves.push(emptyIndex - 1);
+            if (col < 3) moves.push(emptyIndex + 1);
+
+            return moves;
+        }
+
+        // 检查是否获胜
+        function checkWin() {
+            for (let i = 0; i < 15; i++) {
+                if (tiles[i] !== i + 1) return false;
+            }
+            return tiles[15] === 0;
+        }
+
+        // 显示获胜消息
+        function showWinMessage() {
+            document.getElementById('finalMoves').textContent = moves;
+            document.getElementById('finalTime').textContent = document.getElementById('time').textContent;
+            document.getElementById('winMessage').classList.add('show');
+        }
+
+        // 开始计时
+        function startTimer() {
+            timer = setInterval(() => {
+                seconds++;
+                const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const secs = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('time').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        // 停止计时
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        // 重置游戏
+        function resetGame() {
+            stopTimer();
+            moves = 0;
+            seconds = 0;
+            document.getElementById('moves').textContent = '0';
+            document.getElementById('time').textContent = '00:00';
+            initGame();
+        }
+
+        // 再玩一次
+        function playAgain() {
+            document.getElementById('winMessage').classList.remove('show');
+            shuffleBoard();
+        }
+
+        // 初始化
+        initGame();
+    </script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连线配对 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            color: #2d3436;
+        }
+        .pairs-container {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .column { display: flex; flex-direction: column; gap: 10px; }
+        .item {
+            padding: 15px 25px;
+            background: #74b9ff;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            min-width: 120px;
+            text-align: center;
+        }
+        .item:hover { transform: scale(1.05); background: #0984e3; }
+        .item.selected { background: #fdcb6e; transform: scale(1.1); }
+        .item.matched { background: #00b894; cursor: default; }
+        .item.wrong { background: #e74c3c; }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+        .game-area { position: relative; }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #0984e3; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #0984e3;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #74b9ff; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🔗 连线配对</h1>
+        <p>将左右两边的配对连接起来</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="matched">0</div><div>配对</div></div>
+            <div class="stat"><div class="stat-value" id="timer">60</div><div>时间</div></div>
+        </div>
+        <div class="game-area" id="gameArea">
+            <div class="pairs-container">
+                <div class="column" id="leftColumn"></div>
+                <div class="column" id="rightColumn"></div>
+            </div>
+        </div>
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+        </div>
+    </div>
+    <script>
+        const pairs = [
+            {left: '苹果', right: '🍎'},
+            {left: '香蕉', right: '🍌'},
+            {left: '猫', right: '🐱'},
+            {left: '狗', right: '🐶'},
+            {left: '太阳', right: '☀️'},
+            {left: '月亮', right: '🌙'},
+            {left: '星星', right: '⭐'},
+            {left: '爱心', right: '❤️'},
+            {left: '飞机', right: '✈️'},
+            {left: '汽车', right: '🚗'},
+        ];
+        
+        let currentPairs = [];
+        let selectedItem = null;
+        let matchedCount = 0;
+        let score = 0;
+        let timeLeft = 60;
+        let gameTimer = null;
+        let matchedPairs = [];
+        
+        function shuffleArray(arr) {
+            const shuffled = [...arr];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+        
+        function selectPairs() {
+            const shuffled = shuffleArray(pairs);
+            return shuffled.slice(0, 5);
+        }
+        
+        function renderPairs() {
+            const leftCol = document.getElementById('leftColumn');
+            const rightCol = document.getElementById('rightColumn');
+            
+            leftCol.innerHTML = '';
+            rightCol.innerHTML = '';
+            
+            const leftItems = currentPairs.map(p => p.left);
+            const rightItems = shuffleArray(currentPairs.map(p => p.right));
+            
+            leftItems.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.textContent = item;
+                div.dataset.side = 'left';
+                div.dataset.index = idx;
+                div.onclick = () => selectItem(div, 'left', idx);
+                leftCol.appendChild(div);
+            });
+            
+            rightItems.forEach((item, idx) => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.textContent = item;
+                div.dataset.side = 'right';
+                div.dataset.value = item;
+                div.onclick = () => selectItem(div, 'right', item);
+                rightCol.appendChild(div);
+            });
+        }
+        
+        function selectItem(element, side, value) {
+            if (element.classList.contains('matched')) return;
+            
+            if (!selectedItem) {
+                selectedItem = {element, side, value};
+                element.classList.add('selected');
+            } else {
+                if (selectedItem.side === side) {
+                    // Same side, switch selection
+                    selectedItem.element.classList.remove('selected');
+                    selectedItem = {element, side, value};
+                    element.classList.add('selected');
+                } else {
+                    // Different side, check match
+                    checkMatch(element, value);
+                }
+            }
+        }
+        
+        function checkMatch(element, value) {
+            const leftItem = selectedItem.side === 'left' ? selectedItem : {element, value};
+            const rightItem = selectedItem.side === 'right' ? selectedItem : {element, value};
+            
+            // Find the pair
+            const pair = currentPairs.find(p => 
+                p.left === (selectedItem.side === 'left' ? selectedItem.element.textContent : element.textContent)
+            );
+            
+            if (pair && pair.right === (selectedItem.side === 'right' ? selectedItem.value : value)) {
+                // Match!
+                selectedItem.element.classList.remove('selected');
+                selectedItem.element.classList.add('matched');
+                element.classList.add('matched');
+                
+                matchedCount++;
+                score += 20;
+                document.getElementById('score').textContent = score;
+                document.getElementById('matched').textContent = matchedCount;
+                
+                if (matchedCount === currentPairs.length) {
+                    nextRound();
+                }
+            } else {
+                // Wrong
+                selectedItem.element.classList.add('wrong');
+                element.classList.add('wrong');
+                
+                setTimeout(() => {
+                    selectedItem.element.classList.remove('selected', 'wrong');
+                    element.classList.remove('wrong');
+                }, 500);
+            }
+            
+            selectedItem = null;
+        }
+        
+        function nextRound() {
+            matchedCount = 0;
+            document.getElementById('matched').textContent = '0';
+            currentPairs = selectPairs();
+            renderPairs();
+        }
+        
+        function startGame() {
+            clearInterval(gameTimer);
+            score = 0;
+            matchedCount = 0;
+            timeLeft = 60;
+            selectedItem = null;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('matched').textContent = '0';
+            document.getElementById('timer').textContent = '60';
+            
+            currentPairs = selectPairs();
+            renderPairs();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            clearInterval(gameTimer);
+            alert(`游戏结束！\n得分: ${score}`);
+        }
+        
+        currentPairs = selectPairs();
+        renderPairs();
+    </script>
+</body>
+</html>

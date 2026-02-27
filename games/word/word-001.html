@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字练习 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .text-display {
+            margin: 30px 0;
+            padding: 30px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            font-size: 1.8em;
+            line-height: 1.6;
+            text-align: left;
+            min-height: 150px;
+        }
+
+        .text-display .correct {
+            color: #2ecc71;
+        }
+
+        .text-display .current {
+            background: #3498db;
+            color: white;
+            padding: 0 2px;
+        }
+
+        .text-display .incorrect {
+            color: #e74c3c;
+            text-decoration: underline;
+        }
+
+        .input-area {
+            margin: 20px 0;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.2em;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: #667eea;
+        }
+
+        input[type="text"]:disabled {
+            background: #f5f5f5;
+            cursor: not-allowed;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #d3f9d8;
+            border-radius: 10px;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result h2 {
+            color: #2b8a3e;
+            margin-bottom: 15px;
+        }
+
+        .result p {
+            color: #495057;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⌨️ 打字练习</h1>
+        <p>快速准确地输入显示的文字</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">用时</div>
+                <div class="info-value" id="timer">00:00</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">速度</div>
+                <div class="info-value" id="wpm">0 WPM</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">准确率</div>
+                <div class="info-value" id="accuracy">100%</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">进度</div>
+                <div class="info-value" id="progress">0%</div>
+            </div>
+        </div>
+
+        <div class="text-display" id="textDisplay">
+            <!-- 文字会在这里显示 -->
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="inputField" placeholder="点击开始按钮，然后在这里输入..." autocomplete="off" disabled>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-primary" id="startBtn" onclick="startGame()">🎮 开始</button>
+            <button class="btn-secondary" onclick="resetGame()">🔄 重置</button>
+        </div>
+
+        <div class="result" id="result">
+            <h2>🎉 完成！</h2>
+            <p>用时: <strong id="finalTime">00:00</strong></p>
+            <p>速度: <strong id="finalWpm">0 WPM</strong></p>
+            <p>准确率: <strong id="finalAccuracy">100%</strong></p>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        const texts = [
+            "The quick brown fox jumps over the lazy dog",
+            "Pack my box with five dozen liquor jugs",
+            "How vexingly quick daft zebras jump",
+            "The five boxing wizards jump quickly",
+            "Sphinx of black quartz judge my vow",
+            "Two driven jocks help fax my big quiz",
+            "The jay pig fox zebra and my wolves quack",
+            "Sympathizing would fix Quaker objectives",
+            "A wizard's job is to vex chumps quickly in fog"
+        ];
+
+        let currentText = "";
+        let currentIndex = 0;
+        let startTime = 0;
+        let timer = null;
+        let correctChars = 0;
+        let totalChars = 0;
+        let isPlaying = false;
+
+        const inputField = document.getElementById('inputField');
+        const textDisplay = document.getElementById('textDisplay');
+
+        function startGame() {
+            if (isPlaying) return;
+
+            isPlaying = true;
+            currentText = texts[Math.floor(Math.random() * texts.length)];
+            currentIndex = 0;
+            correctChars = 0;
+            totalChars = 0;
+            startTime = Date.now();
+
+            inputField.disabled = false;
+            inputField.value = '';
+            inputField.focus();
+            document.getElementById('startBtn').disabled = true;
+
+            renderText();
+            startTimer();
+        }
+
+        function renderText() {
+            const inputValue = inputField.value;
+            let html = '';
+
+            for (let i = 0; i < currentText.length; i++) {
+                if (i < inputValue.length) {
+                    if (inputValue[i] === currentText[i]) {
+                        html += `<span class="correct">${currentText[i]}</span>`;
+                    } else {
+                        html += `<span class="incorrect">${currentText[i]}</span>`;
+                    }
+                } else if (i === inputValue.length) {
+                    html += `<span class="current">${currentText[i]}</span>`;
+                } else {
+                    html += currentText[i];
+                }
+            }
+
+            textDisplay.innerHTML = html;
+        }
+
+        inputField.addEventListener('input', () => {
+            if (!isPlaying) return;
+
+            renderText();
+            updateStats();
+
+            // 检查是否完成
+            if (inputField.value.length >= currentText.length) {
+                endGame();
+            }
+        });
+
+        function updateStats() {
+            const inputValue = inputField.value;
+            const elapsed = (Date.now() - startTime) / 1000 / 60; // 分钟
+
+            // 计算准确率
+            correctChars = 0;
+            for (let i = 0; i < inputValue.length; i++) {
+                if (inputValue[i] === currentText[i]) {
+                    correctChars++;
+                }
+            }
+            totalChars = inputValue.length;
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+
+            // 计算WPM（每分钟单词数）
+            const words = inputValue.length / 5; // 5个字符算一个单词
+            const wpm = elapsed > 0 ? Math.round(words / elapsed) : 0;
+            document.getElementById('wpm').textContent = wpm + ' WPM';
+
+            // 更新进度
+            const progress = Math.round((inputValue.length / currentText.length) * 100);
+            document.getElementById('progress').textContent = progress + '%';
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+                const seconds = (elapsed % 60).toString().padStart(2, '0');
+                document.getElementById('timer').textContent = `${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(timer);
+            inputField.disabled = true;
+            document.getElementById('startBtn').disabled = false;
+
+            const elapsed = (Date.now() - startTime) / 1000 / 60;
+            const words = currentText.length / 5;
+            const wpm = Math.round(words / elapsed);
+            const accuracy = Math.round((correctChars / totalChars) * 100);
+
+            document.getElementById('finalTime').textContent = document.getElementById('timer').textContent;
+            document.getElementById('finalWpm').textContent = wpm + ' WPM';
+            document.getElementById('finalAccuracy').textContent = accuracy + '%';
+            document.getElementById('result').classList.add('show');
+        }
+
+        function resetGame() {
+            isPlaying = false;
+            clearInterval(timer);
+
+            currentText = "";
+            currentIndex = 0;
+            correctChars = 0;
+            totalChars = 0;
+            startTime = 0;
+
+            inputField.value = '';
+            inputField.disabled = true;
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('wpm').textContent = '0 WPM';
+            document.getElementById('accuracy').textContent = '100%';
+            document.getElementById('progress').textContent = '0%';
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('result').classList.remove('show');
+            textDisplay.innerHTML = '<p style="color: #999; text-align: center;">点击开始按钮</p>';
+        }
+
+        // 初始化
+        resetGame();
+    </script>
+</body>
+</html>

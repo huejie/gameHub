@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>挖矿达人 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #D2691E; border-radius: 10px; cursor: crosshair; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #FFD700; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #D2691E; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>⛏️ 挖矿达人</h1><p>点击挖掘，收集矿石！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="time">60</div><div>时间</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div class="controls"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const TILE = 40, COLS = 10, ROWS = 10;
+        const types = [
+            {name: 'dirt', color: '#8B4513', points: 1},
+            {name: 'stone', color: '#808080', points: 2},
+            {name: 'iron', color: '#A9A9A9', points: 5},
+            {name: 'gold', color: '#FFD700', points: 10},
+            {name: 'diamond', color: '#00CED1', points: 25}
+        ];
+        
+        let grid = [], score = 0, timeLeft = 60, timer = null;
+        
+        function newGame() {
+            clearInterval(timer);
+            score = 0;
+            timeLeft = 60;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('time').textContent = '60';
+            
+            grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                grid[r] = [];
+                for (let c = 0; c < COLS; c++) {
+                    const rand = Math.random();
+                    let type;
+                    if (rand < 0.5) type = 0;
+                    else if (rand < 0.75) type = 1;
+                    else if (rand < 0.9) type = 2;
+                    else if (rand < 0.97) type = 3;
+                    else type = 4;
+                    grid[r][c] = {...types[type], dug: false};
+                }
+            }
+            grid[0][Math.floor(COLS/2)].dug = true; // Starting point
+            
+            render();
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    alert(`时间到！得分: ${score}`);
+                }
+            }, 1000);
+        }
+        
+        function render() {
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const tile = grid[r][c];
+                    const x = c * TILE, y = r * TILE;
+                    
+                    if (tile.dug) {
+                        ctx.fillStyle = '#3d2817';
+                        ctx.fillRect(x, y, TILE, TILE);
+                    } else {
+                        ctx.fillStyle = tile.color;
+                        ctx.fillRect(x + 2, y + 2, TILE - 4, TILE - 4);
+                        
+                        // Add shine
+                        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                        ctx.fillRect(x + 5, y + 5, 10, 5);
+                        
+                        // Icon for special
+                        if (tile.name === 'gold') {
+                            ctx.fillStyle = '#FFF8DC';
+                            ctx.font = '16px Arial';
+                            ctx.fillText('Au', x + 10, y + 25);
+                        } else if (tile.name === 'diamond') {
+                            ctx.fillStyle = '#E0FFFF';
+                            ctx.beginPath();
+                            ctx.moveTo(x + 20, y + 8);
+                            ctx.lineTo(x + 28, y + 20);
+                            ctx.lineTo(x + 20, y + 32);
+                            ctx.lineTo(x + 12, y + 20);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+        }
+        
+        canvas.addEventListener('click', e => {
+            const rect = canvas.getBoundingClientRect();
+            const mx = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width) / TILE);
+            const my = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height) / TILE);
+            
+            if (mx < 0 || mx >= COLS || my < 0 || my >= ROWS) return;
+            
+            // Check if adjacent to dug tile
+            let canDig = false;
+            const dirs = [[-1,0],[1,0],[0,-1],[0,1]];
+            for (let [dy, dx] of dirs) {
+                const ny = my + dy, nx = mx + dx;
+                if (ny >= 0 && ny < ROWS && nx >= 0 && nx < COLS && grid[ny][nx].dug) {
+                    canDig = true;
+                    break;
+                }
+            }
+            
+            if (canDig && !grid[my][mx].dug) {
+                score += grid[my][mx].points;
+                grid[my][mx].dug = true;
+                document.getElementById('score').textContent = score;
+                render();
+            }
+        });
+        
+        newGame();
+    </script>
+</body>
+</html>

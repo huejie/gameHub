@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图案设计 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 2px solid #9b59b6; border-radius: 10px; cursor: crosshair; }
+        .controls { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #9b59b6; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🔷 图案设计</h1><p>点击创建对称图案！</p></div>
+    <div class="controls">
+        <button onclick="clearCanvas()">清空</button>
+        <button onclick="setSymmetry(4)">4对称</button>
+        <button onclick="setSymmetry(6)">6对称</button>
+        <button onclick="setSymmetry(8)">8对称</button>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let symmetry = 6;
+        let isDrawing = false;
+        let hue = 0;
+        
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        function setSymmetry(n) {
+            symmetry = n;
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            const angle = Math.PI * 2 / symmetry;
+            
+            hue = (hue + 1) % 360;
+            ctx.strokeStyle = `hsl(${hue}, 70%, 50%)`;
+            ctx.lineWidth = 3;
+            
+            for (let i = 0; i < symmetry; i++) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle * i);
+                
+                const dx = x - cx;
+                const dy = y - cy;
+                
+                ctx.beginPath();
+                ctx.arc(dx, dy, 5, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.restore();
+            }
+        }
+        
+        canvas.addEventListener('mousedown', () => isDrawing = true);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseleave', () => isDrawing = false);
+        
+        function clearCanvas() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+    </script>
+</body>
+</html>

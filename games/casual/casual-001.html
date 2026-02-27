@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹钢琴 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .piano {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            position: relative;
+            height: 300px;
+        }
+
+        .white-key {
+            width: 60px;
+            height: 250px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 0 0 5px 5px;
+            margin: 0 2px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .white-key:hover {
+            background: #f0f0f0;
+        }
+
+        .white-key.active {
+            background: #e0e0e0;
+            transform: translateY(2px);
+        }
+
+        .black-key {
+            width: 40px;
+            height: 160px;
+            background: #333;
+            border-radius: 0 0 3px 3px;
+            position: absolute;
+            top: 0;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.1s ease;
+        }
+
+        .black-key:hover {
+            background: #555;
+        }
+
+        .black-key.active {
+            background: #666;
+            transform: translateY(2px);
+        }
+
+        .info {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info p {
+            margin: 10px 0;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .keyboard-hint {
+            display: inline-block;
+            padding: 5px 10px;
+            background: #333;
+            color: white;
+            border-radius: 5px;
+            margin: 0 5px;
+            font-family: monospace;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .demo-song {
+            margin: 20px 0;
+        }
+
+        .demo-btn {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 0.9em;
+        }
+
+        .demo-btn:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎹 弹钢琴</h1>
+        <p>点击琴键或使用键盘弹奏美妙的音乐</p>
+
+        <div class="info">
+            <p><strong>键盘映射：</strong></p>
+            <p>
+                <span class="keyboard-hint">A</span>
+                <span class="keyboard-hint">S</span>
+                <span class="keyboard-hint">D</span>
+                <span class="keyboard-hint">F</span>
+                <span class="keyboard-hint">G</span>
+                <span class="keyboard-hint">H</span>
+                <span class="keyboard-hint">J</span>
+                <span class="keyboard-hint">K</span>
+            </p>
+            <p>对应白键：Do Re Mi Fa Sol La Si Do</p>
+        </div>
+
+        <div class="piano" id="piano">
+            <!-- 白键 -->
+            <div class="white-key" data-note="C4">A</div>
+            <div class="white-key" data-note="D4">S</div>
+            <div class="white-key" data-note="E4">D</div>
+            <div class="white-key" data-note="F4">F</div>
+            <div class="white-key" data-note="G4">G</div>
+            <div class="white-key" data-note="A4">H</div>
+            <div class="white-key" data-note="B4">J</div>
+            <div class="white-key" data-note="C5">K</div>
+        </div>
+
+        <div class="demo-song">
+            <p><strong>演示曲目：</strong></p>
+            <button class="demo-btn" onclick="playDemo('twinkle')">小星星</button>
+            <button class="demo-btn" onclick="playDemo('happy')">生日快乐</button>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-primary" onclick="playNote('C4')">🎵 随便弹弹</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        // 音频上下文
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+
+        // 音符频率
+        const noteFrequencies = {
+            'C4': 261.63,
+            'D4': 293.66,
+            'E4': 329.63,
+            'F4': 349.23,
+            'G4': 392.00,
+            'A4': 440.00,
+            'B4': 493.88,
+            'C5': 523.25
+        };
+
+        // 键盘映射
+        const keyMap = {
+            'a': 'C4',
+            's': 'D4',
+            'd': 'E4',
+            'f': 'F4',
+            'g': 'G4',
+            'h': 'A4',
+            'j': 'B4',
+            'k': 'C5'
+        };
+
+        // 演示曲目
+        const demoSongs = {
+            'twinkle': ['C4', 'C4', 'G4', 'G4', 'A4', 'A4', 'G4', 'F4', 'F4', 'E4', 'E4', 'D4', 'D4', 'C4'],
+            'happy': ['C4', 'C4', 'D4', 'C4', 'F4', 'E4', 'C4', 'C4', 'D4', 'C4', 'G4', 'F4']
+        };
+
+        function playNote(note) {
+            // 创建振荡器
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.value = noteFrequencies[note];
+
+            // 音量包络
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1);
+
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + 1);
+
+            // 视觉反馈
+            const key = document.querySelector(`[data-note="${note}"]`);
+            if (key) {
+                key.classList.add('active');
+                setTimeout(() => key.classList.remove('active'), 200);
+            }
+        }
+
+        function playDemo(songName) {
+            const song = demoSongs[songName];
+            song.forEach((note, index) => {
+                setTimeout(() => playNote(note), index * 400);
+            });
+        }
+
+        // 鼠标点击
+        document.querySelectorAll('.white-key').forEach(key => {
+            key.addEventListener('mousedown', () => {
+                const note = key.dataset.note;
+                playNote(note);
+            });
+        });
+
+        // 键盘事件
+        document.addEventListener('keydown', (e) => {
+            const note = keyMap[e.key.toLowerCase()];
+            if (note && !e.repeat) {
+                playNote(note);
+            }
+        });
+
+        // 初始化音频上下文（需要用户交互）
+        document.body.addEventListener('click', () => {
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>水果机 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; }
+        .slots { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
+        .slot { width: 80px; height: 80px; background: #2d3436; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 3rem; overflow: hidden; }
+        .slot.spinning { animation: spin 0.1s infinite; }
+        @keyframes spin { 0% { transform: translateY(-5px); } 50% { transform: translateY(5px); } 100% { transform: translateY(-5px); } }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        .result { font-size: 1.3rem; margin: 15px 0; min-height: 30px; }
+        button { padding: 15px 40px; font-size: 1.2rem; border: none; border-radius: 10px; cursor: pointer; background: #f1c40f; color: #2d3436; font-weight: bold; margin: 10px; }
+        button:hover { background: #f39c12; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎰 水果机</h1><p>三个相同就中奖！</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="coins">100</div><div>金币</div></div>
+            <div class="stat"><div class="stat-value" id="bet">10</div><div>下注</div></div>
+        </div>
+        <div class="slots">
+            <div class="slot" id="s0">🍒</div>
+            <div class="slot" id="s1">🍋</div>
+            <div class="slot" id="s2">🍊</div>
+        </div>
+        <div class="result" id="result">点击"旋转"开始！</div>
+        <button onclick="spin()" id="spinBtn">旋转 (10金币)</button>
+        <div style="margin-top:15px;">
+            <button onclick="changeBet(-5)" style="padding:8px 15px;font-size:1rem;">-5</button>
+            <button onclick="changeBet(5)" style="padding:8px 15px;font-size:1rem;">+5</button>
+        </div>
+    </div>
+    <script>
+        const fruits = ['🍒', '🍋', '🍊', '🍇', '⭐', '7️⃣'];
+        const payouts = {3: 10, 2: 2}; // 3个相同10倍，2个相同2倍
+        let coins = 100, bet = 10;
+        
+        function changeBet(delta) {
+            bet = Math.max(5, Math.min(coins, bet + delta));
+            document.getElementById('bet').textContent = bet;
+            document.getElementById('spinBtn').textContent = `旋转 (${bet}金币)`;
+        }
+        
+        function spin() {
+            if (coins < bet) {
+                document.getElementById('result').textContent = '金币不足！';
+                return;
+            }
+            
+            coins -= bet;
+            document.getElementById('coins').textContent = coins;
+            
+            const btn = document.getElementById('spinBtn');
+            btn.disabled = true;
+            
+            const slots = [0, 1, 2].map(i => document.getElementById('s' + i));
+            slots.forEach(s => s.classList.add('spinning'));
+            
+            const results = [];
+            let stopped = 0;
+            
+            slots.forEach((slot, i) => {
+                let count = 0;
+                const interval = setInterval(() => {
+                    slot.textContent = fruits[Math.floor(Math.random() * fruits.length)];
+                    count++;
+                    if (count > 10 + i * 5) {
+                        clearInterval(interval);
+                        slot.classList.remove('spinning');
+                        results[i] = slot.textContent;
+                        stopped++;
+                        if (stopped === 3) checkWin(results);
+                    }
+                }, 100);
+            });
+        }
+        
+        function checkWin(results) {
+            const btn = document.getElementById('spinBtn');
+            const result = document.getElementById('result');
+            
+            if (results[0] === results[1] && results[1] === results[2]) {
+                const win = bet * 10;
+                coins += win;
+                result.textContent = `🎉 大奖！${win}金币！`;
+            } else if (results[0] === results[1] || results[1] === results[2] || results[0] === results[2]) {
+                const win = bet * 2;
+                coins += win;
+                result.textContent = `✨ 小奖！${win}金币！`;
+            } else {
+                result.textContent = '再试试运气！';
+            }
+            
+            document.getElementById('coins').textContent = coins;
+            btn.disabled = false;
+            
+            if (coins <= 0) {
+                result.textContent = '游戏结束！';
+                btn.disabled = true;
+                setTimeout(() => {
+                    coins = 100;
+                    document.getElementById('coins').textContent = coins;
+                    result.textContent = '已重置100金币';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接龙 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); min-height: 100vh; color: white; padding: 10px; }
+        .header { text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 1.5rem; }
+        .top-area { display: flex; justify-content: space-between; margin: 10px; align-items: center; }
+        .foundations { display: flex; gap: 5px; }
+        .foundation { width: 60px; height: 80px; background: rgba(0,0,0,0.2); border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; }
+        .tableau { display: flex; gap: 5px; justify-content: center; margin: 10px; flex-wrap: wrap; }
+        .column { width: 60px; min-height: 250px; background: rgba(0,0,0,0.1); border-radius: 5px; }
+        .card { width: 60px; height: 80px; background: white; border-radius: 5px; margin: 2px auto; text-align: center; line-height: 80px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2d3436; }
+        .card.selected { box-shadow: 0 0 10px #f1c40f; }
+        .controls { text-align: center; margin: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 10px; left: 10px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🃏 空当接龙</h1></div>
+    <div class="top-area">
+        <div class="foundations">
+            <div class="foundation" id="f0" onclick="moveToFoundation(0)">♠</div>
+            <div class="foundation" id="f1" onclick="moveToFoundation(1)">♥</div>
+            <div class="foundation" id="f2" onclick="moveToFoundation(2)">♣</div>
+            <div class="foundation" id="f3" onclick="moveToFoundation(3)">♦</div>
+        </div>
+    </div>
+    <div class="tableau" id="tableau"></div>
+    <div class="controls"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const suits = ['♠', '♥', '♣', '♦'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        let columns = [], foundations = [[], [], [], []], selected = null;
+        
+        function createDeck() {
+            const deck = [];
+            for (let s of suits) {
+                for (let v of values) {
+                    deck.push({suit: s, value: v, rank: values.indexOf(v)});
+                }
+            }
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+        
+        function newGame() {
+            const deck = createDeck();
+            columns = [[], [], [], [], [], [], [], []];
+            foundations = [[], [], [], []];
+            selected = null;
+            
+            let idx = 0;
+            for (let i = 0; i < 52; i++) {
+                columns[idx].push(deck[i]);
+                idx = (idx + 1) % 8;
+            }
+            render();
+        }
+        
+        function render() {
+            const tableau = document.getElementById('tableau');
+            tableau.innerHTML = '';
+            
+            columns.forEach((col, colIdx) => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.onclick = (e) => { if (e.target === colDiv && selected) moveCards(colIdx); };
+                
+                col.forEach((card, cardIdx) => {
+                    const cardDiv = document.createElement('div');
+                    const isRed = card.suit === '♥' || card.suit === '♦';
+                    cardDiv.className = 'card' + (isRed ? ' red' : ' black');
+                    if (selected && selected.col === colIdx && selected.cardIdx === cardIdx) cardDiv.classList.add('selected');
+                    cardDiv.textContent = card.suit + card.value;
+                    cardDiv.onclick = (e) => { e.stopPropagation(); selectCard(colIdx, cardIdx); };
+                    colDiv.appendChild(cardDiv);
+                });
+                tableau.appendChild(colDiv);
+            });
+            
+            suits.forEach((s, i) => {
+                const el = document.getElementById('f' + i);
+                const f = foundations[i];
+                el.textContent = f.length > 0 ? f[f.length-1].suit + f[f.length-1].value : s;
+            });
+        }
+        
+        function selectCard(colIdx, cardIdx) {
+            if (!selected) {
+                selected = {col: colIdx, cardIdx};
+            } else if (selected.col === colIdx && selected.cardIdx === cardIdx) {
+                selected = null;
+            } else {
+                moveCards(colIdx);
+            }
+            render();
+        }
+        
+        function moveCards(targetCol) {
+            if (!selected) return;
+            const card = columns[selected.col][selected.cardIdx];
+            const target = columns[targetCol];
+            
+            if (target.length > 0) {
+                const top = target[target.length - 1];
+                const cardRed = card.suit === '♥' || card.suit === '♦';
+                const topRed = top.suit === '♥' || top.suit === '♦';
+                if (cardRed === topRed || top.rank !== card.rank + 1) { selected = null; render(); return; }
+            } else if (card.rank !== 12) { selected = null; render(); return; }
+            
+            columns[selected.col].splice(selected.cardIdx, 1);
+            target.push(card);
+            selected = null;
+            render();
+        }
+        
+        function moveToFoundation(fIdx) {
+            if (!selected || columns[selected.col].length - 1 !== selected.cardIdx) { selected = null; render(); return; }
+            const card = columns[selected.col][selected.cardIdx];
+            const f = foundations[fIdx];
+            
+            if (card.suit !== suits[fIdx]) { selected = null; render(); return; }
+            if (f.length === 0 && card.rank !== 0) { selected = null; render(); return; }
+            if (f.length > 0 && f[f.length-1].rank !== card.rank - 1) { selected = null; render(); return; }
+            
+            columns[selected.col].pop();
+            f.push(card);
+            selected = null;
+            render();
+            
+            if (foundations.every(f => f.length === 13)) alert('🎉 恭喜！');
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

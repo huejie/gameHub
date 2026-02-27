@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>围棋简化版 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #1abc9c 0%, #16a085 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .board { display: grid; grid-template-columns: repeat(3, 80px); gap: 5px; margin: 20px 0; }
+        .cell { width: 80px; height: 80px; background: #2d3436; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 3rem; transition: all 0.2s; }
+        .cell:hover { background: #34495e; }
+        .cell.x { color: #e74c3c; }
+        .cell.o { color: #3498db; }
+        .stats { font-size: 1.3rem; margin: 10px 0; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 10px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎮 策略井字棋</h1><p>三连获胜，AI对战！</p></div>
+    <div class="stats" id="status">你的回合 (X)</div>
+    <div class="board" id="board"></div>
+    <button onclick="newGame()">新游戏</button>
+    <script>
+        let board = [], turn = 'X', gameOver = false;
+        
+        function newGame() {
+            board = Array(9).fill(null);
+            turn = 'X';
+            gameOver = false;
+            document.getElementById('status').textContent = '你的回合 (X)';
+            render();
+        }
+        
+        function render() {
+            const el = document.getElementById('board');
+            el.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell' + (board[i] === 'X' ? ' x' : board[i] === 'O' ? ' o' : '');
+                cell.textContent = board[i] || '';
+                cell.onclick = () => click(i);
+                el.appendChild(cell);
+            }
+        }
+        
+        function click(i) {
+            if (gameOver || board[i] || turn !== 'X') return;
+            board[i] = 'X';
+            render();
+            if (checkWin('X')) { gameOver = true; document.getElementById('status').textContent = '🎉 你赢了！'; return; }
+            if (board.every(c => c)) { gameOver = true; document.getElementById('status').textContent = '平局！'; return; }
+            turn = 'O';
+            document.getElementById('status').textContent = 'AI思考中...';
+            setTimeout(aiMove, 300);
+        }
+        
+        function aiMove() {
+            // Try to win
+            for (let i = 0; i < 9; i++) if (!board[i]) { board[i] = 'O'; if (checkWin('O')) { render(); gameOver = true; document.getElementById('status').textContent = '😢 AI赢了！'; return; } board[i] = null; }
+            // Block
+            for (let i = 0; i < 9; i++) if (!board[i]) { board[i] = 'X'; if (checkWin('X')) { board[i] = 'O'; render(); turn = 'X'; document.getElementById('status').textContent = '你的回合 (X)'; return; } board[i] = null; }
+            // Center
+            if (!board[4]) { board[4] = 'O'; render(); turn = 'X'; document.getElementById('status').textContent = '你的回合 (X)'; return; }
+            // Corner
+            for (let i of [0, 2, 6, 8]) if (!board[i]) { board[i] = 'O'; render(); turn = 'X'; document.getElementById('status').textContent = '你的回合 (X)'; return; }
+            // Random
+            for (let i = 0; i < 9; i++) if (!board[i]) { board[i] = 'O'; render(); turn = 'X'; document.getElementById('status').textContent = '你的回合 (X)'; return; }
+        }
+        
+        function checkWin(p) {
+            const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            return wins.some(([a,b,c]) => board[a] === p && board[b] === p && board[c] === p);
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

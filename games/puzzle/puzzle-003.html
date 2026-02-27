@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫雷 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 2px;
+            margin: 20px auto;
+            padding: 10px;
+            background: #c0c0c0;
+            border: 3px solid #808080;
+            border-radius: 5px;
+            width: fit-content;
+        }
+
+        .cell {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #d0d0d0 0%, #a0a0a0 100%);
+            border: 2px outset #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1em;
+            user-select: none;
+        }
+
+        .cell:hover {
+            background: linear-gradient(135deg, #e0e0e0 0%, #b0b0b0 100%);
+        }
+
+        .cell.revealed {
+            background: #d0d0d0;
+            border: 1px solid #808080;
+        }
+
+        .cell.mine {
+            background: #ff0000;
+        }
+
+        .cell.flagged::after {
+            content: '🚩';
+            font-size: 0.8em;
+        }
+
+        .cell[data-number="1"] { color: #0000ff; }
+        .cell[data-number="2"] { color: #008000; }
+        .cell[data-number="3"] { color: #ff0000; }
+        .cell[data-number="4"] { color: #000080; }
+        .cell[data-number="5"] { color: #800000; }
+        .cell[data-number="6"] { color: #008080; }
+        .cell[data-number="7"] { color: #000000; }
+        .cell[data-number="8"] { color: #808080; }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.win {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .message.lose {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💣 扫雷</h1>
+        <p>左键揭开格子，右键标记地雷</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">地雷数</div>
+                <div class="info-value" id="mineCount">10</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">用时</div>
+                <div class="info-value" id="timer">000</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">状态</div>
+                <div class="info-value" id="status">😊</div>
+            </div>
+        </div>
+
+        <div class="game-board" id="gameBoard"></div>
+
+        <div class="message" id="message"></div>
+
+        <div class="buttons">
+            <button class="btn-primary" onclick="resetGame()">🔄 新游戏</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        const ROWS = 10;
+        const COLS = 10;
+        const MINES = 10;
+
+        let board = [];
+        let revealed = [];
+        let flagged = [];
+        let gameOver = false;
+        let gameWon = false;
+        let timer = null;
+        let seconds = 0;
+        let firstClick = true;
+
+        function initBoard() {
+            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+            revealed = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+            flagged = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+            gameOver = false;
+            gameWon = false;
+            firstClick = true;
+            seconds = 0;
+            
+            clearInterval(timer);
+            document.getElementById('timer').textContent = '000';
+            document.getElementById('status').textContent = '😊';
+            document.getElementById('message').className = 'message';
+        }
+
+        function placeMines(firstRow, firstCol) {
+            let minesPlaced = 0;
+            
+            while (minesPlaced < MINES) {
+                const row = Math.floor(Math.random() * ROWS);
+                const col = Math.floor(Math.random() * COLS);
+                
+                // 避免在第一次点击的位置及周围放置地雷
+                if (Math.abs(row - firstRow) <= 1 && Math.abs(col - firstCol) <= 1) continue;
+                
+                if (board[row][col] !== -1) {
+                    board[row][col] = -1;
+                    minesPlaced++;
+                }
+            }
+            
+            // 计算数字
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (board[i][j] === -1) continue;
+                    
+                    let count = 0;
+                    for (let di = -1; di <= 1; di++) {
+                        for (let dj = -1; dj <= 1; dj++) {
+                            const ni = i + di;
+                            const nj = j + dj;
+                            if (ni >= 0 && ni < ROWS && nj >= 0 && nj < COLS) {
+                                if (board[ni][nj] === -1) count++;
+                            }
+                        }
+                    }
+                    board[i][j] = count;
+                }
+            }
+        }
+
+        function renderBoard() {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    
+                    if (revealed[i][j]) {
+                        cell.classList.add('revealed');
+                        if (board[i][j] === -1) {
+                            cell.classList.add('mine');
+                            cell.textContent = '💣';
+                        } else if (board[i][j] > 0) {
+                            cell.textContent = board[i][j];
+                            cell.dataset.number = board[i][j];
+                        }
+                    } else if (flagged[i][j]) {
+                        cell.classList.add('flagged');
+                    }
+                    
+                    cell.addEventListener('click', () => handleClick(i, j));
+                    cell.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        handleRightClick(i, j);
+                    });
+                    
+                    gameBoard.appendChild(cell);
+                }
+            }
+        }
+
+        function handleClick(row, col) {
+            if (gameOver || flagged[row][col] || revealed[row][col]) return;
+            
+            if (firstClick) {
+                firstClick = false;
+                placeMines(row, col);
+                startTimer();
+            }
+            
+            if (board[row][col] === -1) {
+                gameOver = true;
+                revealAllMines();
+                document.getElementById('status').textContent = '😵';
+                showMessage('lose', '💥 游戏结束！踩到地雷了');
+                clearInterval(timer);
+            } else {
+                revealCell(row, col);
+                checkWin();
+            }
+            
+            renderBoard();
+        }
+
+        function handleRightClick(row, col) {
+            if (gameOver || revealed[row][col]) return;
+            
+            flagged[row][col] = !flagged[row][col];
+            
+            const flagCount = flagged.flat().filter(f => f).length;
+            document.getElementById('mineCount').textContent = MINES - flagCount;
+            
+            renderBoard();
+        }
+
+        function revealCell(row, col) {
+            if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return;
+            if (revealed[row][col] || flagged[row][col]) return;
+            
+            revealed[row][col] = true;
+            
+            if (board[row][col] === 0) {
+                for (let di = -1; di <= 1; di++) {
+                    for (let dj = -1; dj <= 1; dj++) {
+                        revealCell(row + di, col + dj);
+                    }
+                }
+            }
+        }
+
+        function revealAllMines() {
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (board[i][j] === -1) {
+                        revealed[i][j] = true;
+                    }
+                }
+            }
+        }
+
+        function checkWin() {
+            let unrevealedCount = 0;
+            for (let i = 0; i < ROWS; i++) {
+                for (let j = 0; j < COLS; j++) {
+                    if (!revealed[i][j]) unrevealedCount++;
+                }
+            }
+            
+            if (unrevealedCount === MINES) {
+                gameWon = true;
+                gameOver = true;
+                document.getElementById('status').textContent = '😎';
+                showMessage('win', '🎉 恭喜！你赢了！');
+                clearInterval(timer);
+            }
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').textContent = seconds.toString().padStart(3, '0');
+            }, 1000);
+        }
+
+        function showMessage(type, text) {
+            const message = document.getElementById('message');
+            message.textContent = text;
+            message.className = `message show ${type}`;
+        }
+
+        function resetGame() {
+            initBoard();
+            renderBoard();
+        }
+
+        // 初始化
+        resetGame();
+    </script>
+</body>
+</html>

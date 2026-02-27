@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钓鱼接龙 - GameHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #2d5016 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #ffd700;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .game-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .score-board {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .score-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+        }
+        .score-item .label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .score-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #ffd700;
+        }
+        .table-area {
+            background: rgba(0,0,0,0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 150px;
+        }
+        .table-label {
+            color: #fff;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .cards-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            min-height: 100px;
+            align-items: center;
+        }
+        .card {
+            width: 60px;
+            height: 85px;
+            background: linear-gradient(145deg, #fff, #f0f0f0);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            position: relative;
+            transition: all 0.3s;
+        }
+        .card.red {
+            color: #d32f2f;
+        }
+        .card.black {
+            color: #212121;
+        }
+        .card .suit {
+            font-size: 22px;
+        }
+        .card .rank {
+            font-size: 14px;
+            margin-top: -3px;
+        }
+        .card.back {
+            background: linear-gradient(145deg, #1565c0, #0d47a1);
+        }
+        .card.back::before {
+            content: '🎴';
+            font-size: 28px;
+        }
+        .card.table-card {
+            cursor: pointer;
+        }
+        .card.table-card:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 15px rgba(255,215,0,0.4);
+        }
+        .card.highlight {
+            animation: pulse 0.5s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            from { box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
+            to { box-shadow: 0 4px 20px rgba(255,215,0,0.6); }
+        }
+        .player-area {
+            margin-top: 20px;
+        }
+        .player-hand {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .player-hand .card {
+            cursor: pointer;
+        }
+        .player-hand .card:hover {
+            transform: translateY(-10px);
+        }
+        .player-hand .card.selected {
+            transform: translateY(-15px);
+            box-shadow: 0 8px 20px rgba(255,215,0,0.5);
+            border: 2px solid #ffd700;
+        }
+        .message {
+            color: #ffd700;
+            font-size: 1.2rem;
+            text-align: center;
+            min-height: 30px;
+            margin: 15px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #ffd700, #ffaa00);
+            color: #1a472a;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .rules {
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+        }
+        .rules h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+        .rules ul {
+            padding-left: 20px;
+        }
+        .rules li {
+            margin: 5px 0;
+        }
+        .collected {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .collected .card {
+            width: 40px;
+            height: 56px;
+            font-size: 0.8rem;
+        }
+        .collected .card .suit {
+            font-size: 14px;
+        }
+        .collected .card .rank {
+            font-size: 10px;
+        }
+        @media (max-width: 600px) {
+            .card {
+                width: 50px;
+                height: 70px;
+            }
+            .card .suit {
+                font-size: 18px;
+            }
+            .card .rank {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐟 钓鱼接龙 🐟</h1>
+        <a href="../../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+    
+    <div class="game-container">
+        <div class="score-board">
+            <div class="score-item">
+                <div class="label">你的得分</div>
+                <div class="value" id="player-score">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">电脑得分</div>
+                <div class="value" id="computer-score">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">剩余牌</div>
+                <div class="value" id="remaining">52</div>
+            </div>
+        </div>
+        
+        <div class="message" id="message">点击"开始游戏"</div>
+        
+        <div class="table-area">
+            <div class="table-label">桌面上的牌（点击匹配）</div>
+            <div class="cards-row" id="table-cards"></div>
+        </div>
+        
+        <div class="player-area">
+            <div class="table-label">你的手牌（选择一张）</div>
+            <div class="player-hand" id="player-hand"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="start-btn" onclick="startGame()">开始游戏</button>
+            <button class="btn btn-primary" id="play-btn" onclick="playTurn()" style="display:none;">出牌</button>
+            <button class="btn btn-secondary" onclick="showRules()">游戏规则</button>
+        </div>
+        
+        <div class="rules" id="rules" style="display:none;">
+            <h3>游戏规则</h3>
+            <ul>
+                <li>52张牌平分，每人26张</li>
+                <li>轮流出牌到桌面</li>
+                <li>如果出的牌与桌上某张牌点数相同，可以"钓"走它们之间的所有牌</li>
+                <li>例如：桌上有 3-7-5，你出5，可以收走 7-5-5</li>
+                <li>J是万能牌，可以匹配任何牌</li>
+                <li>收到的牌计入得分</li>
+                <li>手牌用完时游戏结束，得分高者获胜</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const SUITS = ['♠', '♥', '♦', '♣'];
+        const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        
+        let playerHand = [];
+        let computerHand = [];
+        let tableCards = [];
+        let playerScore = 0;
+        let computerScore = 0;
+        let selectedCard = -1;
+        let gameActive = false;
+        let isPlayerTurn = true;
+        
+        function createDeck() {
+            const deck = [];
+            for (let suit of SUITS) {
+                for (let rank of RANKS) {
+                    deck.push({ suit, rank });
+                }
+            }
+            return deck;
+        }
+        
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+        
+        function getCardColor(suit) {
+            return suit === '♥' || suit === '♦' ? 'red' : 'black';
+        }
+        
+        function createCardElement(card, isBack = false, extraClass = '') {
+            if (isBack) {
+                return `<div class="card back ${extraClass}"></div>`;
+            }
+            return `<div class="card ${getCardColor(card.suit)} ${extraClass}" data-rank="${card.rank}">
+                <span class="suit">${card.suit}</span>
+                <span class="rank">${card.rank}</span>
+            </div>`;
+        }
+        
+        function renderTable() {
+            const container = document.getElementById('table-cards');
+            if (tableCards.length === 0) {
+                container.innerHTML = '<span style="color: rgba(255,255,255,0.5);">桌面上没有牌</span>';
+            } else {
+                container.innerHTML = tableCards.map((card, index) => 
+                    createCardElement(card, false, 'table-card')
+                ).join('');
+            }
+        }
+        
+        function renderPlayerHand() {
+            const container = document.getElementById('player-hand');
+            container.innerHTML = playerHand.map((card, index) => 
+                createCardElement(card, false, index === selectedCard ? 'selected' : '')
+            ).join('');
+            
+            // 添加点击事件
+            container.querySelectorAll('.card').forEach((el, index) => {
+                el.onclick = () => selectCard(index);
+            });
+        }
+        
+        function selectCard(index) {
+            if (!gameActive || !isPlayerTurn) return;
+            selectedCard = index;
+            renderPlayerHand();
+            document.getElementById('play-btn').style.display = 'inline-block';
+        }
+        
+        function findMatch(card, table) {
+            // J可以匹配任何牌
+            if (card.rank === 'J') {
+                return table.length > 0 ? 0 : -1;
+            }
+            
+            // 查找匹配的牌
+            for (let i = 0; i < table.length; i++) {
+                if (table[i].rank === card.rank) {
+                    return i;
+                }
+            }
+            return -1;
+        }
+        
+        function playTurn() {
+            if (selectedCard === -1) return;
+            
+            const card = playerHand.splice(selectedCard, 1)[0];
+            const matchIndex = findMatch(card, tableCards);
+            
+            if (matchIndex !== -1) {
+                // 匹配成功，收牌
+                const collected = tableCards.splice(matchIndex);
+                collected.push(card);
+                playerScore += collected.length;
+                
+                updateMessage(`太棒了！钓到了 ${collected.length} 张牌！`);
+                updateScores();
+            } else {
+                // 没有匹配，放到桌面
+                tableCards.push(card);
+                updateMessage('没有匹配，牌放到桌面');
+            }
+            
+            selectedCard = -1;
+            document.getElementById('play-btn').style.display = 'none';
+            
+            renderTable();
+            renderPlayerHand();
+            
+            // 检查游戏是否结束
+            if (playerHand.length === 0 && computerHand.length === 0) {
+                setTimeout(endGame, 1000);
+                return;
+            }
+            
+            if (playerHand.length === 0) {
+                updateMessage('你没有手牌了，等待电脑...');
+                setTimeout(computerTurn, 1000);
+                return;
+            }
+            
+            // 电脑回合
+            isPlayerTurn = false;
+            setTimeout(computerTurn, 1000);
+        }
+        
+        function computerTurn() {
+            if (computerHand.length === 0) {
+                if (playerHand.length > 0) {
+                    isPlayerTurn = true;
+                    updateMessage('轮到你了');
+                } else {
+                    endGame();
+                }
+                return;
+            }
+            
+            // 简单AI：随机选一张牌
+            const randomIndex = Math.floor(Math.random() * computerHand.length);
+            const card = computerHand.splice(randomIndex, 1)[0];
+            
+            updateMessage(`电脑出了一张 ${card.suit}${card.rank}`);
+            
+            setTimeout(() => {
+                const matchIndex = findMatch(card, tableCards);
+                
+                if (matchIndex !== -1) {
+                    const collected = tableCards.splice(matchIndex);
+                    collected.push(card);
+                    computerScore += collected.length;
+                    
+                    updateMessage(`电脑钓走了 ${collected.length} 张牌！`);
+                    updateScores();
+                } else {
+                    tableCards.push(card);
+                    updateMessage('电脑没有匹配');
+                }
+                
+                renderTable();
+                
+                // 检查游戏结束
+                if (playerHand.length === 0 && computerHand.length === 0) {
+                    setTimeout(endGame, 1000);
+                    return;
+                }
+                
+                if (computerHand.length === 0 && playerHand.length > 0) {
+                    updateMessage('电脑没牌了，你继续');
+                    isPlayerTurn = true;
+                    return;
+                }
+                
+                if (playerHand.length > 0) {
+                    isPlayerTurn = true;
+                    updateMessage('轮到你了');
+                } else {
+                    updateMessage('你没有牌了...');
+                    setTimeout(computerTurn, 1000);
+                }
+            }, 800);
+        }
+        
+        function updateScores() {
+            document.getElementById('player-score').textContent = playerScore;
+            document.getElementById('computer-score').textContent = computerScore;
+            document.getElementById('remaining').textContent = 
+                playerHand.length + computerHand.length + tableCards.length;
+        }
+        
+        function updateMessage(msg) {
+            document.getElementById('message').textContent = msg;
+        }
+        
+        function startGame() {
+            // 初始化
+            const deck = shuffle(createDeck());
+            playerHand = deck.slice(0, 26);
+            computerHand = deck.slice(26, 52);
+            tableCards = [];
+            playerScore = 0;
+            computerScore = 0;
+            selectedCard = -1;
+            gameActive = true;
+            isPlayerTurn = true;
+            
+            renderTable();
+            renderPlayerHand();
+            updateScores();
+            updateMessage('游戏开始！选择一张牌出牌');
+            
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('play-btn').style.display = 'none';
+        }
+        
+        function endGame() {
+            gameActive = false;
+            
+            // 剩余的桌面牌归最后出牌的人（简化规则：平分）
+            const remainingTable = tableCards.length;
+            if (remainingTable > 0) {
+                const half = Math.floor(remainingTable / 2);
+                playerScore += half;
+                computerScore += remainingTable - half;
+                updateScores();
+            }
+            
+            let result;
+            if (playerScore > computerScore) {
+                result = `🎉 恭喜你获胜！ ${playerScore} vs ${computerScore}`;
+            } else if (playerScore < computerScore) {
+                result = `电脑获胜！ ${playerScore} vs ${computerScore}，再接再厉！`;
+            } else {
+                result = `平局！ ${playerScore} vs ${computerScore}`;
+            }
+            
+            updateMessage(result);
+            
+            document.getElementById('start-btn').textContent = '再来一局';
+            document.getElementById('start-btn').style.display = 'inline-block';
+            document.getElementById('play-btn').style.display = 'none';
+        }
+        
+        function showRules() {
+            const rules = document.getElementById('rules');
+            rules.style.display = rules.style.display === 'none' ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

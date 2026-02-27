@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>保龄球 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #f39c12; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #f39c12; color: #2d3436; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎳 保龄球</h1><p>拖拽球来投掷！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="frame">1</div><div>回合</div></div>
+    </div>
+    <canvas id="canvas" width="200" height="400"></canvas>
+    <div style="text-align:center;margin-top:15px;"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball = {x: 100, y: 350, r: 15, vx: 0, vy: 0, rolling: false};
+        let pins = [];
+        let score = 0, frame = 1;
+        let isDragging = false, dragStart = {x: 0, y: 0};
+        
+        function setupPins() {
+            pins = [];
+            const startX = 100, startY = 60;
+            let row = 0, col = 0, count = 0;
+            
+            for (let i = 1; i <= 4; i++) {
+                for (let j = 0; j < i; j++) {
+                    pins.push({
+                        x: startX + (j - i/2 + 0.5) * 25,
+                        y: startY + row * 22,
+                        r: 10,
+                        standing: true
+                    });
+                }
+                row++;
+            }
+        }
+        
+        function draw() {
+            // Lane
+            ctx.fillStyle = '#D2691E';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Gutters
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, 20, canvas.height);
+            ctx.fillRect(canvas.width - 20, 0, 20, canvas.height);
+            
+            // Pins
+            pins.forEach(pin => {
+                if (pin.standing) {
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(pin.x, pin.y, pin.r, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.beginPath();
+                    ctx.arc(pin.x, pin.y, pin.r - 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // Ball
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Aim line
+            if (isDragging) {
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(ball.x, ball.y);
+                ctx.lineTo(ball.x + (ball.x - dragStart.x), ball.y + (ball.y - dragStart.y));
+                ctx.stroke();
+            }
+        }
+        
+        function update() {
+            if (ball.rolling) {
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                ball.vy *= 0.99;
+                
+                // Check pin collision
+                pins.forEach(pin => {
+                    if (pin.standing) {
+                        const dist = Math.sqrt((ball.x - pin.x) ** 2 + (ball.y - pin.y) ** 2);
+                        if (dist < ball.r + pin.r) {
+                            pin.standing = false;
+                            score += 10;
+                            document.getElementById('score').textContent = score;
+                        }
+                    }
+                });
+                
+                // Reset
+                if (ball.y < -20) {
+                    ball.rolling = false;
+                    ball.x = 100;
+                    ball.y = 350;
+                    ball.vx = 0;
+                    ball.vy = 0;
+                    
+                    const standing = pins.filter(p => p.standing).length;
+                    if (standing === 0) {
+                        frame++;
+                        document.getElementById('frame').textContent = frame;
+                        setupPins();
+                    }
+                }
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+        
+        canvas.addEventListener('mousedown', e => {
+            if (!ball.rolling) {
+                const rect = canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                isDragging = true;
+                dragStart = {x, y};
+            }
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                dragStart.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                dragStart.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            if (isDragging) {
+                ball.vx = (ball.x - dragStart.x) * 0.05;
+                ball.vy = (ball.y - dragStart.y) * 0.1 - 5;
+                ball.rolling = true;
+            }
+            isDragging = false;
+        });
+        
+        function newGame() {
+            score = 0;
+            frame = 1;
+            ball = {x: 100, y: 350, r: 15, vx: 0, vy: 0, rolling: false};
+            document.getElementById('score').textContent = '0';
+            document.getElementById('frame').textContent = '1';
+            setupPins();
+        }
+        
+        newGame();
+        update();
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>骰子比大小 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; }
+        .dice-area { display: flex; justify-content: center; gap: 30px; margin: 20px 0; }
+        .dice { width: 80px; height: 80px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 3rem; color: #e74c3c; font-weight: bold; }
+        .dice.rolling { animation: roll 0.3s infinite; }
+        @keyframes roll { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(10deg); } }
+        .stats { display: flex; justify-content: center; gap: 40px; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #f1c40f; }
+        .result { font-size: 1.5rem; margin: 15px 0; min-height: 40px; }
+        button { padding: 15px 40px; font-size: 1.2rem; border: none; border-radius: 10px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 10px; }
+        button:hover { background: #c0392b; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎲 骰子比大小</h1><p>掷骰子，比比谁的点数大！</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="wins">0</div><div>胜</div></div>
+            <div class="stat"><div class="stat-value" id="losses">0</div><div>负</div></div>
+            <div class="stat"><div class="stat-value" id="ties">0</div><div>平</div></div>
+        </div>
+        <div class="dice-area">
+            <div><div>你</div><div class="dice" id="myDice">?</div></div>
+            <div><div>电脑</div><div class="dice" id="aiDice">?</div></div>
+        </div>
+        <div class="result" id="result">点击"掷骰子"开始</div>
+        <button onclick="roll()" id="rollBtn">掷骰子</button>
+    </div>
+    <script>
+        let wins = 0, losses = 0, ties = 0;
+        
+        function roll() {
+            const btn = document.getElementById('rollBtn');
+            const myDice = document.getElementById('myDice');
+            const aiDice = document.getElementById('aiDice');
+            const result = document.getElementById('result');
+            
+            btn.disabled = true;
+            myDice.classList.add('rolling');
+            aiDice.classList.add('rolling');
+            result.textContent = '掷骰中...';
+            
+            let count = 0;
+            const interval = setInterval(() => {
+                myDice.textContent = Math.floor(Math.random() * 6) + 1;
+                aiDice.textContent = Math.floor(Math.random() * 6) + 1;
+                count++;
+                if (count > 10) {
+                    clearInterval(interval);
+                    myDice.classList.remove('rolling');
+                    aiDice.classList.remove('rolling');
+                    
+                    const myNum = Math.floor(Math.random() * 6) + 1;
+                    const aiNum = Math.floor(Math.random() * 6) + 1;
+                    myDice.textContent = myNum;
+                    aiDice.textContent = aiNum;
+                    
+                    if (myNum > aiNum) {
+                        result.textContent = '🎉 你赢了！';
+                        wins++;
+                    } else if (myNum < aiNum) {
+                        result.textContent = '😢 你输了！';
+                        losses++;
+                    } else {
+                        result.textContent = '🤝 平局！';
+                        ties++;
+                    }
+                    
+                    document.getElementById('wins').textContent = wins;
+                    document.getElementById('losses').textContent = losses;
+                    document.getElementById('ties').textContent = ties;
+                    btn.disabled = false;
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>

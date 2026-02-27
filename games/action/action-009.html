@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>太空跳跃 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #0a0a1a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 2px solid #9b59b6; border-radius: 10px; display: block; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #9b59b6; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #9b59b6;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #8e44ad; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: #9b59b6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🚀 太空跳跃</h1>
+        <p>左右移动，跳上平台不断上升！</p>
+    </div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>高度</div></div>
+        <div class="stat"><div class="stat-value" id="high">0</div><div>最高</div></div>
+    </div>
+    <canvas id="gameCanvas" width="300" height="500"></canvas>
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player, platforms, stars;
+        let score = 0, highScore = 0;
+        let gameRunning = false;
+        let keys = {};
+        
+        function init() {
+            player = {x: canvas.width/2, y: canvas.height - 50, vx: 0, vy: 0, size: 20};
+            platforms = [];
+            score = 0;
+            
+            // Initial platforms
+            for (let i = 0; i < 8; i++) {
+                platforms.push({
+                    x: Math.random() * (canvas.width - 60),
+                    y: canvas.height - i * 70,
+                    width: 60,
+                    height: 10,
+                    type: Math.random() < 0.2 ? 'moving' : 'static',
+                    vx: (Math.random() - 0.5) * 2
+                });
+            }
+            
+            // Stars
+            stars = [];
+            for (let i = 0; i < 50; i++) {
+                stars.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height});
+            }
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            // Background
+            ctx.fillStyle = '#0a0a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Stars
+            ctx.fillStyle = '#fff';
+            stars.forEach(s => {
+                ctx.fillRect(s.x, s.y, 2, 2);
+            });
+            
+            // Player movement
+            if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -5;
+            else if (keys['ArrowRight'] || keys['KeyD']) player.vx = 5;
+            else player.vx *= 0.8;
+            
+            player.vy += 0.5;
+            player.x += player.vx;
+            player.y += player.vy;
+            
+            // Wrap around
+            if (player.x < 0) player.x = canvas.width;
+            if (player.x > canvas.width) player.x = 0;
+            
+            // Platform collision (only when falling)
+            if (player.vy > 0) {
+                platforms.forEach(p => {
+                    if (player.x > p.x && player.x < p.x + p.width &&
+                        player.y + player.size > p.y && player.y + player.size < p.y + p.height + 10) {
+                        player.vy = -12;
+                    }
+                });
+            }
+            
+            // Update platforms
+            platforms.forEach(p => {
+                if (p.type === 'moving') {
+                    p.x += p.vx;
+                    if (p.x < 0 || p.x > canvas.width - p.width) p.vx *= -1;
+                }
+            });
+            
+            // Scroll when player goes up
+            if (player.y < canvas.height / 2) {
+                const scroll = canvas.height / 2 - player.y;
+                player.y = canvas.height / 2;
+                score += Math.floor(scroll);
+                
+                platforms.forEach(p => p.y += scroll);
+                stars.forEach(s => s.y += scroll);
+                
+                // Remove off-screen platforms and add new ones
+                platforms = platforms.filter(p => p.y < canvas.height + 50);
+                while (platforms.length < 8) {
+                    platforms.push({
+                        x: Math.random() * (canvas.width - 60),
+                        y: -10,
+                        width: 60,
+                        height: 10,
+                        type: Math.random() < 0.3 ? 'moving' : 'static',
+                        vx: (Math.random() - 0.5) * 3
+                    });
+                }
+            }
+            
+            // Game over
+            if (player.y > canvas.height) {
+                gameRunning = false;
+                if (score > highScore) highScore = score;
+                document.getElementById('high').textContent = highScore;
+                setTimeout(() => alert(`游戏结束！高度: ${score}`), 100);
+                return;
+            }
+            
+            // Draw platforms
+            platforms.forEach(p => {
+                ctx.fillStyle = p.type === 'moving' ? '#e74c3c' : '#27ae60';
+                ctx.fillRect(p.x, p.y, p.width, p.height);
+            });
+            
+            // Draw player
+            ctx.fillStyle = '#9b59b6';
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y - player.size);
+            ctx.lineTo(player.x - player.size/2, player.y + player.size/2);
+            ctx.lineTo(player.x + player.size/2, player.y + player.size/2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Flame
+            if (player.vy < 0) {
+                ctx.fillStyle = '#f39c12';
+                ctx.beginPath();
+                ctx.moveTo(player.x - 5, player.y + player.size/2);
+                ctx.lineTo(player.x, player.y + player.size/2 + 10 + Math.random() * 5);
+                ctx.lineTo(player.x + 5, player.y + player.size/2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            document.getElementById('score').textContent = score;
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+        
+        function startGame() {
+            init();
+            gameRunning = true;
+            update();
+        }
+        
+        init();
+    </script>
+</body>
+</html>

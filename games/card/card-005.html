@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蜘蛛纸牌 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a5f2a 0%, #27ae60 100%);
+            min-height: 100vh;
+            color: white;
+            padding: 10px;
+        }
+        .header { text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 1.5rem; }
+        .game-box { display: flex; gap: 10px; overflow-x: auto; padding: 10px; }
+        .column { min-width: 70px; background: rgba(0,0,0,0.2); border-radius: 5px; padding: 5px; min-height: 300px; }
+        .card { width: 60px; height: 80px; background: white; border-radius: 5px; margin: 3px auto; text-align: center; line-height: 80px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .card.red { color: #e74c3c; }
+        .card.black { color: #2d3436; }
+        .card.face-down { background: #3498db; color: transparent; }
+        .card.selected { box-shadow: 0 0 10px #f1c40f; }
+        .controls { text-align: center; margin: 10px; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 10px; left: 10px; color: white; text-decoration: none; }
+        .stats { text-align: center; margin: 10px; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🕷️ 简易蜘蛛纸牌</h1>
+    </div>
+    <div class="stats">完成: <span id="completed">0</span>/8 组 | 移动: <span id="moves">0</span></div>
+    <div class="game-box" id="gameBox"></div>
+    <div class="controls">
+        <button onclick="deal()">发牌</button>
+        <button onclick="newGame()">新游戏</button>
+    </div>
+    <script>
+        const suits = ['♠'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        let columns = [];
+        let selected = null;
+        let completed = 0;
+        let moves = 0;
+        let deck = [];
+        
+        function createDeck() {
+            deck = [];
+            for (let i = 0; i < 8; i++) {
+                for (let v of values) {
+                    deck.push({value: v, rank: values.indexOf(v), faceUp: false});
+                }
+            }
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+        
+        function deal() {
+            columns = [];
+            for (let i = 0; i < 10; i++) {
+                columns.push([]);
+            }
+            
+            let cardIdx = 0;
+            for (let i = 0; i < 10; i++) {
+                const count = i < 4 ? 6 : 5;
+                for (let j = 0; j < count; j++) {
+                    const card = {...deck[cardIdx++]};
+                    card.faceUp = (j === count - 1);
+                    columns[i].push(card);
+                }
+            }
+            
+            deck = deck.slice(54);
+            render();
+        }
+        
+        function render() {
+            const box = document.getElementById('gameBox');
+            box.innerHTML = '';
+            
+            columns.forEach((col, colIdx) => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'column';
+                colDiv.onclick = (e) => { if (e.target === colDiv) selectColumn(colIdx); };
+                
+                col.forEach((card, cardIdx) => {
+                    const cardDiv = document.createElement('div');
+                    cardDiv.className = 'card' + (card.faceUp ? '' : ' face-down');
+                    if (selected && selected.col === colIdx && selected.cardIdx <= cardIdx) {
+                        cardDiv.classList.add('selected');
+                    }
+                    cardDiv.textContent = card.faceUp ? ('♠' + card.value) : '?';
+                    if (card.faceUp) {
+                        cardDiv.onclick = () => selectCard(colIdx, cardIdx);
+                    }
+                    colDiv.appendChild(cardDiv);
+                });
+                
+                box.appendChild(colDiv);
+            });
+        }
+        
+        function selectCard(colIdx, cardIdx) {
+            if (!selected) {
+                // Check if sequence is valid
+                const col = columns[colIdx];
+                let valid = true;
+                for (let i = cardIdx; i < col.length - 1; i++) {
+                    if (!col[i].faceUp || col[i].rank !== col[i+1].rank + 1) {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (valid && col[cardIdx].faceUp) {
+                    selected = {col: colIdx, cardIdx};
+                }
+            } else {
+                if (selected.col === colIdx) {
+                    selected = null;
+                } else {
+                    moveCards(colIdx);
+                }
+                render();
+            }
+            render();
+        }
+        
+        function selectColumn(colIdx) {
+            if (selected && columns[colIdx].length === 0) {
+                moveCards(colIdx);
+                render();
+            }
+        }
+        
+        function moveCards(targetCol) {
+            if (!selected) return;
+            
+            const sourceCol = columns[selected.col];
+            const targetColumn = columns[targetCol];
+            const movingCards = sourceCol.slice(selected.cardIdx);
+            
+            // Check if move is valid
+            if (targetColumn.length > 0) {
+                const topCard = targetColumn[targetColumn.length - 1];
+                if (topCard.rank !== movingCards[0].rank + 1) {
+                    selected = null;
+                    return;
+                }
+            }
+            
+            // Move cards
+            columns[selected.col] = sourceCol.slice(0, selected.cardIdx);
+            columns[targetCol] = [...targetColumn, ...movingCards];
+            
+            // Flip top card of source column
+            if (columns[selected.col].length > 0) {
+                columns[selected.col][columns[selected.col].length - 1].faceUp = true;
+            }
+            
+            moves++;
+            document.getElementById('moves').textContent = moves;
+            selected = null;
+            
+            // Check for complete sequence
+            checkComplete(targetCol);
+        }
+        
+        function checkComplete(colIdx) {
+            const col = columns[colIdx];
+            if (col.length < 13) return;
+            
+            const last13 = col.slice(-13);
+            let complete = true;
+            for (let i = 0; i < 13; i++) {
+                if (!last13[i].faceUp || last13[i].rank !== 12 - i) {
+                    complete = false;
+                    break;
+                }
+            }
+            
+            if (complete) {
+                columns[colIdx] = col.slice(0, -13);
+                if (columns[colIdx].length > 0) {
+                    columns[colIdx][columns[colIdx].length - 1].faceUp = true;
+                }
+                completed++;
+                document.getElementById('completed').textContent = completed;
+                
+                if (completed === 8) {
+                    setTimeout(() => alert('🎉 恭喜完成！'), 100);
+                }
+            }
+        }
+        
+        function newGame() {
+            completed = 0;
+            moves = 0;
+            selected = null;
+            document.getElementById('completed').textContent = '0';
+            document.getElementById('moves').textContent = '0';
+            createDeck();
+            deal();
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

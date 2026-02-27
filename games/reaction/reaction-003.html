@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快速点击 - GameHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #e74c3c;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .game-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .score-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .score-item {
+            background: rgba(231,76,60,0.2);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+            min-width: 100px;
+        }
+        .score-item .label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        .score-item .value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        .game-area {
+            position: relative;
+            height: 350px;
+            background: linear-gradient(180deg, #34495e 0%, #2c3e50 100%);
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .target {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #e74c3c, #c0392b);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3), inset 0 2px 10px rgba(255,255,255,0.2);
+            transition: transform 0.1s;
+            user-select: none;
+        }
+        .target:hover {
+            transform: scale(1.05);
+        }
+        .target:active {
+            transform: scale(0.95);
+        }
+        .target.golden {
+            background: radial-gradient(circle at 30% 30%, #f1c40f, #d4ac0d);
+            width: 60px;
+            height: 60px;
+        }
+        .target.bomb {
+            background: radial-gradient(circle at 30% 30%, #2c3e50, #1a252f);
+            width: 70px;
+            height: 70px;
+        }
+        .click-effect {
+            position: absolute;
+            pointer-events: none;
+            animation: clickPop 0.3s ease-out forwards;
+        }
+        @keyframes clickPop {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        .points-popup {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: bold;
+            pointer-events: none;
+            animation: pointsFloat 0.8s ease-out forwards;
+            text-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        @keyframes pointsFloat {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-60px); opacity: 0; }
+        }
+        .timer-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+            border-radius: 5px;
+            transition: width 0.1s linear;
+        }
+        .message {
+            color: #e74c3c;
+            font-size: 1.3rem;
+            text-align: center;
+            margin: 15px 0;
+            min-height: 30px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(231,76,60,0.4);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .stat-item {
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        .stat-item span {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        @media (max-width: 500px) {
+            .target {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+            .target.golden {
+                width: 45px;
+                height: 45px;
+            }
+            .target.bomb {
+                width: 55px;
+                height: 55px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 快速点击 🎯</h1>
+        <a href="../../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+    
+    <div class="game-container">
+        <div class="score-panel">
+            <div class="score-item">
+                <div class="label">得分</div>
+                <div class="value" id="score">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">连击</div>
+                <div class="value" id="combo">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">时间</div>
+                <div class="value" id="time">30</div>
+            </div>
+        </div>
+        
+        <div class="message" id="message">点击"开始游戏"</div>
+        
+        <div class="game-area" id="game-area">
+            <div style="color: rgba(255,255,255,0.3); font-size: 1.2rem;">目标会出现在这里</div>
+        </div>
+        
+        <div class="timer-bar">
+            <div class="timer-fill" id="timer-fill" style="width: 100%"></div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="start-btn" onclick="startGame()">开始游戏</button>
+            <button class="btn btn-secondary" onclick="showStats()">查看统计</button>
+        </div>
+        
+        <div class="stats" id="stats" style="display:none;">
+            <div class="stat-item">普通目标: <span id="normal-count">0</span></div>
+            <div class="stat-item">金色目标: <span id="golden-count">0</span></div>
+            <div class="stat-item">炸弹躲避: <span id="bomb-dodge">0</span></div>
+            <div class="stat-item">最高连击: <span id="max-combo">0</span></div>
+            <div class="stat-item">总点击数: <span id="total-clicks">0</span></div>
+            <div class="stat-item">准确率: <span id="accuracy">0%</span></div>
+        </div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('game-area');
+        
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let timeLeft = 30;
+        let gameActive = false;
+        let timerInterval;
+        let spawnInterval;
+        let currentTarget = null;
+        
+        // 统计
+        let normalCount = 0;
+        let goldenCount = 0;
+        let bombDodged = 0;
+        let totalClicks = 0;
+        let correctClicks = 0;
+        
+        function createTarget() {
+            if (currentTarget) {
+                currentTarget.remove();
+                // 如果是炸弹没点，算躲避成功
+                if (currentTarget.classList.contains('bomb')) {
+                    bombDodged++;
+                } else {
+                    combo = 0;
+                }
+            }
+            
+            // 随机类型
+            const rand = Math.random();
+            let type = 'normal';
+            if (rand < 0.1) type = 'golden';
+            else if (rand < 0.25) type = 'bomb';
+            
+            const target = document.createElement('div');
+            target.className = `target ${type}`;
+            
+            // 随机位置
+            const areaRect = gameArea.getBoundingClientRect();
+            const maxX = areaRect.width - 90;
+            const maxY = areaRect.height - 90;
+            const x = Math.random() * maxX + 5;
+            const y = Math.random() * maxY + 5;
+            
+            target.style.left = `${x}px`;
+            target.style.top = `${y}px`;
+            
+            // 内容
+            if (type === 'normal') {
+                target.textContent = '🎯';
+            } else if (type === 'golden') {
+                target.textContent = '⭐';
+            } else {
+                target.textContent = '💣';
+            }
+            
+            // 点击事件
+            target.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleTargetClick(target, type, e);
+            });
+            
+            gameArea.appendChild(target);
+            currentTarget = target;
+            
+            // 自动消失
+            setTimeout(() => {
+                if (target.parentNode && target === currentTarget) {
+                    if (type === 'bomb') {
+                        bombDodged++;
+                    } else {
+                        combo = 0;
+                    }
+                    target.remove();
+                    if (target === currentTarget) currentTarget = null;
+                }
+            }, type === 'golden' ? 800 : 1200);
+        }
+        
+        function handleTargetClick(target, type, e) {
+            if (!gameActive) return;
+            
+            totalClicks++;
+            
+            // 创建点击效果
+            createClickEffect(e.clientX, e.clientY);
+            
+            if (type === 'bomb') {
+                // 点到炸弹，扣分
+                score = Math.max(0, score - 50);
+                combo = 0;
+                showPoints(e.clientX, e.clientY, '-50', '#e74c3c');
+                
+                // 震动效果
+                gameArea.style.animation = 'shake 0.3s';
+                setTimeout(() => gameArea.style.animation = '', 300);
+            } else {
+                // 正确点击
+                correctClicks++;
+                combo++;
+                if (combo > maxCombo) maxCombo = combo;
+                
+                const basePoints = type === 'golden' ? 50 : 10;
+                const comboBonus = Math.floor(combo * 2);
+                const points = basePoints + comboBonus;
+                score += points;
+                
+                if (type === 'golden') {
+                    goldenCount++;
+                } else {
+                    normalCount++;
+                }
+                
+                const color = type === 'golden' ? '#f1c40f' : '#2ecc71';
+                showPoints(e.clientX, e.clientY, `+${points}`, color);
+            }
+            
+            target.remove();
+            currentTarget = null;
+            updateDisplay();
+        }
+        
+        function createClickEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'click-effect';
+            effect.style.left = `${x - 20}px`;
+            effect.style.top = `${y - 20}px`;
+            effect.style.width = '40px';
+            effect.style.height = '40px';
+            effect.style.borderRadius = '50%';
+            effect.style.border = '3px solid rgba(255,255,255,0.5)';
+            document.body.appendChild(effect);
+            setTimeout(() => effect.remove(), 300);
+        }
+        
+        function showPoints(x, y, text, color) {
+            const popup = document.createElement('div');
+            popup.className = 'points-popup';
+            popup.textContent = text;
+            popup.style.left = `${x}px`;
+            popup.style.top = `${y}px`;
+            popup.style.color = color;
+            document.body.appendChild(popup);
+            setTimeout(() => popup.remove(), 800);
+        }
+        
+        // 点击空白区域
+        gameArea.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            if (e.target === gameArea) {
+                totalClicks++;
+                combo = 0;
+                updateDisplay();
+            }
+        });
+        
+        function updateDisplay() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('combo').textContent = combo;
+            document.getElementById('time').textContent = timeLeft;
+            
+            const percentage = (timeLeft / 30) * 100;
+            document.getElementById('timer-fill').style.width = `${percentage}%`;
+        }
+        
+        function startGame() {
+            // 重置
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            timeLeft = 30;
+            gameActive = true;
+            currentTarget = null;
+            normalCount = 0;
+            goldenCount = 0;
+            bombDodged = 0;
+            totalClicks = 0;
+            correctClicks = 0;
+            
+            // 清除旧目标
+            gameArea.innerHTML = '';
+            
+            updateDisplay();
+            document.getElementById('message').textContent = '点击目标得分！避开炸弹！';
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            
+            // 开始生成目标
+            spawnInterval = setInterval(createTarget, 800);
+            
+            // 开始计时
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            clearInterval(spawnInterval);
+            
+            if (currentTarget) {
+                currentTarget.remove();
+                currentTarget = null;
+            }
+            
+            // 计算等级
+            let grade;
+            if (score >= 500) grade = 'S';
+            else if (score >= 350) grade = 'A';
+            else if (score >= 200) grade = 'B';
+            else if (score >= 100) grade = 'C';
+            else grade = 'D';
+            
+            document.getElementById('message').innerHTML = 
+                `游戏结束！等级: <strong>${grade}</strong> | 得分: ${score}`;
+            
+            document.getElementById('start-btn').textContent = '再来一局';
+            document.getElementById('start-btn').style.display = 'inline-block';
+        }
+        
+        function showStats() {
+            const stats = document.getElementById('stats');
+            if (stats.style.display === 'none') {
+                document.getElementById('normal-count').textContent = normalCount;
+                document.getElementById('golden-count').textContent = goldenCount;
+                document.getElementById('bomb-dodge').textContent = bombDodged;
+                document.getElementById('max-combo').textContent = maxCombo;
+                document.getElementById('total-clicks').textContent = totalClicks;
+                const acc = totalClicks > 0 ? Math.round((correctClicks / totalClicks) * 100) : 0;
+                document.getElementById('accuracy').textContent = `${acc}%`;
+                stats.style.display = 'grid';
+            } else {
+                stats.style.display = 'none';
+            }
+        }
+        
+        // 添加震动动画
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钓鱼游戏 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(180deg, #87CEEB 0%, #4169E1 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #2E8B57; border-radius: 10px; cursor: pointer; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #FFD700; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #2E8B57; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎣 钓鱼游戏</h1><p>点击放下鱼钩，再次点击收线！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="caught">0</div><div>捕获</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="500"></canvas>
+    <div class="controls"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let hook, fishes, score = 0, caught = 0;
+        const fishTypes = [
+            {color: '#FF6347', size: 20, speed: 2, points: 10},
+            {color: '#FFD700', size: 30, speed: 1.5, points: 20},
+            {color: '#00CED1', size: 40, speed: 1, points: 50}
+        ];
+        
+        function newGame() {
+            score = 0; caught = 0;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('caught').textContent = '0';
+            hook = {x: canvas.width/2, y: 60, vy: 0, active: false, fish: null};
+            fishes = [];
+            for (let i = 0; i < 8; i++) spawnFish();
+            update();
+        }
+        
+        function spawnFish() {
+            const type = fishTypes[Math.floor(Math.random() * fishTypes.length)];
+            const dir = Math.random() > 0.5 ? 1 : -1;
+            fishes.push({
+                x: dir === 1 ? -type.size : canvas.width + type.size,
+                y: 150 + Math.random() * 280,
+                ...type, dir, vx: type.speed * dir
+            });
+        }
+        
+        function update() {
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, 100);
+            ctx.fillStyle = '#1E90FF';
+            ctx.fillRect(0, 100, canvas.width, canvas.height);
+            
+            // Boat
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(hook.x - 30, 60, 60, 25);
+            ctx.fillStyle = '#A0522D';
+            ctx.fillRect(hook.x - 5, 30, 10, 35);
+            
+            // Hook movement
+            if (hook.active) {
+                hook.y += hook.vy;
+                if (hook.y > canvas.height - 20) hook.vy = -3;
+                if (hook.y < 60) {
+                    hook.active = false;
+                    hook.y = 60;
+                    if (hook.fish) {
+                        score += hook.fish.points;
+                        caught++;
+                        document.getElementById('score').textContent = score;
+                        document.getElementById('caught').textContent = caught;
+                        hook.fish = null;
+                    }
+                }
+            }
+            
+            // Draw hook
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(hook.x, 60);
+            ctx.lineTo(hook.x, hook.y);
+            ctx.stroke();
+            ctx.fillStyle = '#C0C0C0';
+            ctx.beginPath();
+            ctx.arc(hook.x, hook.y, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Update and draw fishes
+            fishes = fishes.filter(f => f.x > -50 && f.x < canvas.width + 50);
+            while (fishes.length < 8) spawnFish();
+            
+            fishes.forEach(f => {
+                if (!hook.fish || hook.fish !== f) {
+                    f.x += f.vx;
+                    
+                    // Check hook collision
+                    if (hook.active && hook.vy > 0 && !hook.fish) {
+                        const dist = Math.sqrt((hook.x - f.x) ** 2 + (hook.y - f.y) ** 2);
+                        if (dist < f.size) {
+                            hook.fish = f;
+                            hook.vy = -3;
+                        }
+                    }
+                }
+                
+                if (hook.fish === f) {
+                    f.x = hook.x;
+                    f.y = hook.y + 15;
+                }
+                
+                ctx.fillStyle = f.color;
+                ctx.beginPath();
+                ctx.ellipse(f.x, f.y, f.size, f.size * 0.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Tail
+                ctx.beginPath();
+                ctx.moveTo(f.x - f.size * f.dir, f.y);
+                ctx.lineTo(f.x - f.size * 1.5 * f.dir, f.y - 8);
+                ctx.lineTo(f.x - f.size * 1.5 * f.dir, f.y + 8);
+                ctx.closePath();
+                ctx.fill();
+            });
+            
+            requestAnimationFrame(update);
+        }
+        
+        canvas.addEventListener('click', () => {
+            if (!hook.active) {
+                hook.active = true;
+                hook.vy = 4;
+            } else if (hook.vy > 0) {
+                hook.vy = -3;
+            }
+        });
+        
+        newGame();
+    </script>
+</body>
+</html>

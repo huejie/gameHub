@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>举重 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #636e72 0%, #2d3436 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; }
+        .lifter { font-size: 6rem; margin: 20px 0; transition: transform 0.3s; }
+        .lifter.up { transform: translateY(-30px); }
+        .bar { height: 20px; background: linear-gradient(90deg, #e74c3c, #c0392b, #e74c3c); border-radius: 5px; margin: 10px auto; transition: width 0.3s; }
+        .power-bar { height: 30px; background: #2d3436; border-radius: 5px; margin: 20px auto; overflow: hidden; }
+        .power-fill { height: 100%; background: linear-gradient(90deg, #27ae60, #f1c40f, #e74c3c); transition: width 0.1s; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        button { padding: 15px 40px; font-size: 1.2rem; border: none; border-radius: 10px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; }
+        button:disabled { background: #636e72; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🏋️ 举重比赛</h1><p>按空格蓄力，松开举起！</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="weight">50kg</div><div>重量</div></div>
+            <div class="stat"><div class="stat-value" id="best">0kg</div><div>最佳</div></div>
+        </div>
+        <div class="power-bar" style="width:200px;"><div class="power-fill" id="power" style="width:0%;"></div></div>
+        <div class="lifter" id="lifter">🏋️</div>
+        <div class="bar" id="bar" style="width:100px;"></div>
+        <div id="message">按住空格蓄力</div>
+        <button id="btn" onclick="nextWeight()">下一个重量</button>
+    </div>
+    <script>
+        let power = 0, charging = false, weight = 50, best = 0, canLift = true;
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' && canLift) {
+                e.preventDefault();
+                charging = true;
+            }
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'Space' && charging) {
+                charging = false;
+                lift();
+            }
+        });
+        
+        function update() {
+            if (charging && power < 100) {
+                power += 2;
+                document.getElementById('power').style.width = power + '%';
+            }
+            if (canLift) requestAnimationFrame(update);
+        }
+        
+        function lift() {
+            canLift = false;
+            const required = weight / 2;
+            
+            if (power >= required) {
+                document.getElementById('lifter').classList.add('up');
+                document.getElementById('message').textContent = `成功举起！+${weight}kg`;
+                document.getElementById('bar').style.width = (50 + weight) + 'px';
+                
+                if (weight > best) {
+                    best = weight;
+                    document.getElementById('best').textContent = best + 'kg';
+                }
+                
+                setTimeout(() => {
+                    document.getElementById('lifter').classList.remove('up');
+                    document.getElementById('btn').disabled = false;
+                }, 1000);
+            } else {
+                document.getElementById('message').textContent = '力量不足！';
+                document.getElementById('btn').disabled = false;
+            }
+            
+            power = 0;
+            document.getElementById('power').style.width = '0%';
+        }
+        
+        function nextWeight() {
+            weight += 10;
+            document.getElementById('weight').textContent = weight + 'kg';
+            document.getElementById('message').textContent = '按住空格蓄力';
+            document.getElementById('btn').disabled = true;
+            canLift = true;
+            update();
+        }
+        
+        update();
+    </script>
+</body>
+</html>

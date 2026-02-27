@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>军棋简化版 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .board { display: grid; grid-template-columns: repeat(5, 50px); gap: 2px; background: #2d3436; padding: 5px; border-radius: 10px; }
+        .cell { width: 50px; height: 50px; background: #34495e; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; font-weight: bold; border-radius: 5px; }
+        .cell.selected { background: #f39c12; }
+        .cell.player { background: #3498db; color: white; }
+        .cell.enemy { background: #e74c3c; color: white; }
+        .stats { margin: 15px 0; text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎖️ 军棋简化版</h1><p>消灭对方所有棋子获胜！</p></div>
+    <div class="stats" id="status">选择你的棋子移动</div>
+    <div class="board" id="board"></div>
+    <button onclick="newGame()">新游戏</button>
+    <script>
+        const RANKS = ['工', '排', '连', '营', '团', '旅', '师', '军', '司'];
+        let board = [], selected = null, playerTurn = true;
+        
+        function newGame() {
+            board = Array(10).fill(null).map(() => Array(5).fill(null));
+            selected = null;
+            playerTurn = true;
+            
+            const pRanks = [...RANKS].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < 9; i++) board[8 + Math.floor(i / 5)][i % 5] = {rank: pRanks[i], team: 'player'};
+            
+            const eRanks = [...RANKS].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < 9; i++) board[Math.floor(i / 5)][i % 5] = {rank: eRanks[i], team: 'enemy'};
+            
+            document.getElementById('status').textContent = '选择你的棋子移动';
+            render();
+        }
+        
+        function render() {
+            const el = document.getElementById('board');
+            el.innerHTML = '';
+            for (let r = 0; r < 10; r++) {
+                for (let c = 0; c < 5; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (board[r][c]) {
+                        cell.classList.add(board[r][c].team);
+                        cell.textContent = board[r][c].team === 'player' ? board[r][c].rank : '?';
+                    }
+                    if (selected && selected.r === r && selected.c === c) cell.classList.add('selected');
+                    cell.onclick = () => click(r, c);
+                    el.appendChild(cell);
+                }
+            }
+        }
+        
+        function click(r, c) {
+            if (!playerTurn) return;
+            
+            if (selected) {
+                const dr = Math.abs(r - selected.r), dc = Math.abs(c - selected.c);
+                if ((dr === 1 && dc === 0) || (dr === 0 && dc === 1)) {
+                    if (!board[r][c] || board[r][c].team === 'enemy') {
+                        if (board[r][c]) {
+                            const pRank = RANKS.indexOf(board[selected.r][selected.c].rank);
+                            const eRank = RANKS.indexOf(board[r][c].rank);
+                            if (pRank >= eRank) board[r][c] = null;
+                            else { board[selected.r][selected.c] = null; }
+                        }
+                        if (board[selected.r][selected.c]) {
+                            board[r][c] = board[selected.r][selected.c];
+                            board[selected.r][selected.c] = null;
+                        }
+                        selected = null;
+                        playerTurn = false;
+                        render();
+                        checkWin();
+                        setTimeout(aiMove, 500);
+                        return;
+                    }
+                }
+                selected = null;
+            }
+            
+            if (board[r][c] && board[r][c].team === 'player') selected = {r, c};
+            render();
+        }
+        
+        function aiMove() {
+            const pieces = [];
+            for (let r = 0; r < 10; r++) for (let c = 0; c < 5; c++) if (board[r][c]?.team === 'enemy') pieces.push({r, c});
+            if (pieces.length === 0) return;
+            
+            const p = pieces[Math.floor(Math.random() * pieces.length)];
+            const moves = [[p.r-1,p.c],[p.r+1,p.c],[p.r,p.c-1],[p.r,p.c+1]].filter(([r,c]) => r>=0 && r<10 && c>=0 && c<5 && (!board[r][c] || board[r][c].team === 'player'));
+            if (moves.length > 0) {
+                const [nr, nc] = moves[Math.floor(Math.random() * moves.length)];
+                board[nr][nc] = board[p.r][p.c];
+                board[p.r][p.c] = null;
+            }
+            playerTurn = true;
+            document.getElementById('status').textContent = '选择你的棋子移动';
+            render();
+            checkWin();
+        }
+        
+        function checkWin() {
+            let p = 0, e = 0;
+            for (let r = 0; r < 10; r++) for (let c = 0; c < 5; c++) {
+                if (board[r][c]?.team === 'player') p++;
+                if (board[r][c]?.team === 'enemy') e++;
+            }
+            if (e === 0) document.getElementById('status').textContent = '🎉 你赢了！';
+            if (p === 0) document.getElementById('status').textContent = '😢 你输了！';
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

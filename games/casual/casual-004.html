@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>消消乐 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; }
+        .grid { display: grid; grid-template-columns: repeat(8, 40px); gap: 3px; margin: 15px auto; }
+        .cell { width: 40px; height: 40px; border-radius: 8px; cursor: pointer; transition: transform 0.2s; }
+        .cell:hover { transform: scale(1.1); }
+        .cell.selected { box-shadow: 0 0 10px white; transform: scale(1.1); }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #9b59b6; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🍬 消消乐</h1><p>交换相邻糖果，三个相同消除</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="moves">20</div><div>步数</div></div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="controls"><button onclick="newGame()">新游戏</button></div>
+    </div>
+    <script>
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22'];
+        const SIZE = 8;
+        let grid = [], selected = null, score = 0, moves = 20;
+        
+        function newGame() {
+            score = 0; moves = 20; selected = null;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('moves').textContent = '20';
+            initGrid();
+            render();
+        }
+        
+        function initGrid() {
+            grid = [];
+            for (let i = 0; i < SIZE; i++) {
+                grid[i] = [];
+                for (let j = 0; j < SIZE; j++) {
+                    grid[i][j] = Math.floor(Math.random() * colors.length);
+                }
+            }
+            // Remove initial matches
+            while (findMatches().length > 0) {
+                for (let i = 0; i < SIZE; i++) {
+                    for (let j = 0; j < SIZE; j++) {
+                        grid[i][j] = Math.floor(Math.random() * colors.length);
+                    }
+                }
+            }
+        }
+        
+        function render() {
+            const el = document.getElementById('grid');
+            el.innerHTML = '';
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (selected && selected.i === i && selected.j === j ? ' selected' : '');
+                    cell.style.background = colors[grid[i][j]];
+                    cell.onclick = () => click(i, j);
+                    el.appendChild(cell);
+                }
+            }
+        }
+        
+        function click(i, j) {
+            if (moves <= 0) return;
+            if (!selected) {
+                selected = {i, j};
+            } else {
+                const di = Math.abs(selected.i - i);
+                const dj = Math.abs(selected.j - j);
+                if ((di === 1 && dj === 0) || (di === 0 && dj === 1)) {
+                    swap(selected.i, selected.j, i, j);
+                    if (findMatches().length === 0) {
+                        swap(selected.i, selected.j, i, j);
+                    } else {
+                        moves--;
+                        document.getElementById('moves').textContent = moves;
+                        processMatches();
+                    }
+                }
+                selected = null;
+            }
+            render();
+        }
+        
+        function swap(i1, j1, i2, j2) {
+            [grid[i1][j1], grid[i2][j2]] = [grid[i2][j2], grid[i1][j1]];
+        }
+        
+        function findMatches() {
+            const matches = [];
+            // Horizontal
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE - 2; j++) {
+                    if (grid[i][j] === grid[i][j+1] && grid[i][j] === grid[i][j+2]) {
+                        matches.push([i, j], [i, j+1], [i, j+2]);
+                    }
+                }
+            }
+            // Vertical
+            for (let i = 0; i < SIZE - 2; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    if (grid[i][j] === grid[i+1][j] && grid[i][j] === grid[i+2][j]) {
+                        matches.push([i, j], [i+1, j], [i+2, j]);
+                    }
+                }
+            }
+            return matches;
+        }
+        
+        function processMatches() {
+            let matches = findMatches();
+            while (matches.length > 0) {
+                score += matches.length * 10;
+                document.getElementById('score').textContent = score;
+                
+                // Remove matches
+                const unique = [...new Set(matches.map(m => m[0] + ',' + m[1]))];
+                unique.forEach(pos => {
+                    const [i, j] = pos.split(',').map(Number);
+                    grid[i][j] = -1;
+                });
+                
+                // Drop
+                for (let j = 0; j < SIZE; j++) {
+                    for (let i = SIZE - 1; i >= 0; i--) {
+                        if (grid[i][j] === -1) {
+                            for (let k = i - 1; k >= 0; k--) {
+                                if (grid[k][j] !== -1) {
+                                    grid[i][j] = grid[k][j];
+                                    grid[k][j] = -1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // Fill top
+                    for (let i = 0; i < SIZE; i++) {
+                        if (grid[i][j] === -1) {
+                            grid[i][j] = Math.floor(Math.random() * colors.length);
+                        }
+                    }
+                }
+                
+                render();
+                matches = findMatches();
+            }
+            
+            if (moves <= 0) {
+                setTimeout(() => alert(`游戏结束！得分: ${score}`), 100);
+            }
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

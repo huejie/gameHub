@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>闪烁追踪 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; }
+        .target { width: 100px; height: 100px; margin: 20px auto; border-radius: 50%; cursor: pointer; transition: all 0.1s; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #3498db; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>👁️ 闪烁追踪</h1><p>在目标变色时快速点击！</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="lives">3</div><div>生命</div></div>
+            <div class="stat"><div class="stat-value" id="best">0ms</div><div>最佳</div></div>
+        </div>
+        <div class="target" id="target" style="background: #e74c3c;"></div>
+        <div id="message">等待目标变绿...</div>
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        const target = document.getElementById('target');
+        let score = 0, lives = 3, bestTime = Infinity;
+        let gameRunning = false, greenTime = 0, isGreen = false, timeout = null;
+        
+        function startGame() {
+            score = 0;
+            lives = 3;
+            gameRunning = true;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('lives').textContent = '3';
+            document.getElementById('message').textContent = '等待目标变绿...';
+            target.style.background = '#e74c3c';
+            isGreen = false;
+            
+            scheduleGreen();
+        }
+        
+        function scheduleGreen() {
+            if (!gameRunning) return;
+            
+            const delay = 1000 + Math.random() * 3000;
+            timeout = setTimeout(() => {
+                if (!gameRunning) return;
+                target.style.background = '#2ecc71';
+                greenTime = Date.now();
+                isGreen = true;
+                document.getElementById('message').textContent = '快点击！';
+            }, delay);
+        }
+        
+        target.addEventListener('click', () => {
+            if (!gameRunning) return;
+            
+            if (isGreen) {
+                const reactionTime = Date.now() - greenTime;
+                score += Math.max(10, Math.floor(100 - reactionTime / 5));
+                
+                if (reactionTime < bestTime) {
+                    bestTime = reactionTime;
+                    document.getElementById('best').textContent = bestTime + 'ms';
+                }
+                
+                document.getElementById('score').textContent = score;
+                document.getElementById('message').textContent = `${reactionTime}ms - 很好！`;
+                
+                target.style.background = '#e74c3c';
+                isGreen = false;
+                
+                scheduleGreen();
+            } else {
+                lives--;
+                document.getElementById('lives').textContent = lives;
+                document.getElementById('message').textContent = '太早了！';
+                
+                if (lives <= 0) {
+                    gameRunning = false;
+                    clearTimeout(timeout);
+                    document.getElementById('message').textContent = `游戏结束！得分: ${score}`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

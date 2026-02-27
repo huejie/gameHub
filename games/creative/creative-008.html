@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>折纸艺术 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center; }
+        .paper { width: 200px; height: 200px; background: white; margin: 20px auto; position: relative; transform-style: preserve-3d; transition: transform 0.5s; }
+        .paper.folded { transform: rotateY(180deg); }
+        .paper .front, .paper .back { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; display: flex; align-items: center; justify-content: center; font-size: 4rem; }
+        .paper .back { transform: rotateY(180deg); }
+        .patterns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 15px 0; }
+        .pattern { width: 60px; height: 60px; background: white; border-radius: 5px; cursor: pointer; font-size: 2rem; display: flex; align-items: center; justify-content: center; }
+        .pattern:hover { transform: scale(1.1); }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #f1c40f; color: #2d3436; font-weight: bold; margin: 10px; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>📄 折纸艺术</h1><p>点击折纸创作！</p></div>
+    <div class="game-box">
+        <div class="paper" id="paper">
+            <div class="front">📄</div>
+            <div class="back" id="back"></div>
+        </div>
+        <div class="patterns">
+            <div class="pattern" onclick="fold('🦢')">🦢</div>
+            <div class="pattern" onclick="fold('🦋')">🦋</div>
+            <div class="pattern" onclick="fold('🐸')">🐸</div>
+            <div class="pattern" onclick="fold('🐦')">🐦</div>
+            <div class="pattern" onclick="fold('⛵')">⛵</div>
+            <div class="pattern" onclick="fold('💎')">💎</div>
+        </div>
+        <button onclick="reset()">重新开始</button>
+    </div>
+    <script>
+        let isFolded = false;
+        
+        function fold(emoji) {
+            const paper = document.getElementById('paper');
+            const back = document.getElementById('back');
+            
+            if (isFolded) {
+                paper.classList.remove('folded');
+                setTimeout(() => {
+                    back.textContent = emoji;
+                    paper.classList.add('folded');
+                }, 500);
+            } else {
+                back.textContent = emoji;
+                paper.classList.add('folded');
+            }
+            isFolded = true;
+        }
+        
+        function reset() {
+            const paper = document.getElementById('paper');
+            paper.classList.remove('folded');
+            isFolded = false;
+        }
+    </script>
+</body>
+</html>

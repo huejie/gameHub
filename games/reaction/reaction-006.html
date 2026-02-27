@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>闪避方块 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #0f0f23; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #6c5ce7; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #6c5ce7; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6c5ce7; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🟪 闪避方块</h1><p>方向键移动，躲避红色方块！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="high">0</div><div>最高</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div class="controls"><button onclick="newGame()">开始游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const SIZE = 20;
+        
+        let player, enemies, score = 0, highScore = 0, gameRunning = false, keys = {};
+        
+        function newGame() {
+            player = {x: canvas.width / 2, y: canvas.height / 2, size: SIZE};
+            enemies = [];
+            score = 0;
+            gameRunning = true;
+            update();
+        }
+        
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            
+            switch(side) {
+                case 0: x = Math.random() * canvas.width; y = -SIZE; break;
+                case 1: x = canvas.width + SIZE; y = Math.random() * canvas.height; break;
+                case 2: x = Math.random() * canvas.width; y = canvas.height + SIZE; break;
+                case 3: x = -SIZE; y = Math.random() * canvas.height; break;
+            }
+            
+            const speed = 2 + score / 50;
+            const angle = Math.atan2(player.y - y, player.x - x);
+            
+            enemies.push({x, y, size: SIZE, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed});
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            ctx.fillStyle = '#0f0f23';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Move player
+            if (keys['ArrowLeft'] || keys['KeyA']) player.x -= 5;
+            if (keys['ArrowRight'] || keys['KeyD']) player.x += 5;
+            if (keys['ArrowUp'] || keys['KeyW']) player.y -= 5;
+            if (keys['ArrowDown'] || keys['KeyS']) player.y += 5;
+            
+            player.x = Math.max(SIZE/2, Math.min(canvas.width - SIZE/2, player.x));
+            player.y = Math.max(SIZE/2, Math.min(canvas.height - SIZE/2, player.y));
+            
+            // Spawn enemies
+            if (Math.random() < 0.02 + score / 1000) spawnEnemy();
+            
+            // Update enemies
+            enemies.forEach(e => {
+                e.x += e.vx;
+                e.y += e.vy;
+            });
+            
+            // Remove off-screen enemies
+            enemies = enemies.filter(e => e.x > -50 && e.x < canvas.width + 50 && e.y > -50 && e.y < canvas.height + 50);
+            
+            // Draw enemies
+            enemies.forEach(e => {
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(e.x - e.size/2, e.y - e.size/2, e.size, e.size);
+            });
+            
+            // Draw player
+            ctx.fillStyle = '#6c5ce7';
+            ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
+            
+            // Check collision
+            for (let e of enemies) {
+                if (Math.abs(player.x - e.x) < (player.size + e.size) / 2 &&
+                    Math.abs(player.y - e.y) < (player.size + e.size) / 2) {
+                    gameRunning = false;
+                    if (score > highScore) {
+                        highScore = score;
+                        document.getElementById('high').textContent = highScore;
+                    }
+                    setTimeout(() => alert(`游戏结束！得分: ${score}`), 100);
+                    return;
+                }
+            }
+            
+            score++;
+            document.getElementById('score').textContent = score;
+            
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => keys[e.code] = true);
+        document.addEventListener('keyup', e => keys[e.code] = false);
+    </script>
+</body>
+</html>

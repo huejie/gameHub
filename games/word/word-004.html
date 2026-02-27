@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成语接龙 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            color: #2d3436;
+        }
+        .current-word {
+            font-size: 2.5rem;
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .last-char {
+            display: inline-block;
+            padding: 5px 15px;
+            background: #e74c3c;
+            border-radius: 5px;
+            font-size: 1.5rem;
+            margin-top: 10px;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        input {
+            flex: 1;
+            padding: 15px;
+            font-size: 1.2rem;
+            border: 2px solid #ff6b6b;
+            border-radius: 10px;
+        }
+        input:focus { outline: none; border-color: #feca57; }
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            background: #ff6b6b;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #ee5a5a; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #ff6b6b; }
+        .history {
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 15px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .history-item {
+            padding: 5px 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .message {
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .message.success { background: #d4edda; color: #155724; }
+        .message.error { background: #f8d7da; color: #721c24; }
+        .hint-btn {
+            background: #feca57;
+            color: #2d3436;
+            margin-top: 10px;
+        }
+        .back-link {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>📖 成语接龙</h1>
+        <p>用上一个成语的最后一个字开头</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="chain">0</div><div>接龙</div></div>
+            <div class="stat"><div class="stat-value" id="hints">3</div><div>提示</div></div>
+        </div>
+        <div class="current-word">
+            <div>当前成语</div>
+            <div id="currentIdiom" style="font-size:2rem;margin:10px 0;">请开始</div>
+            <div class="last-char" id="lastChar">开</div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="输入成语..." maxlength="8">
+            <button onclick="submitIdiom()">确认</button>
+        </div>
+        <div class="message" id="message"></div>
+        <div class="history" id="history"></div>
+        <div style="text-align:center;">
+            <button class="hint-btn" onclick="showHint()">获取提示 (-10分)</button>
+            <button class="hint-btn" onclick="skipWord()">跳过</button>
+        </div>
+    </div>
+    <script>
+        const idioms = [
+            '一心一意', '意气风发', '发愤图强', '强词夺理', '理直气壮',
+            '壮志凌云', '云开雾散', '散兵游勇', '勇往直前', '前途无量',
+            '量力而行', '行之有效', '效犬马劳', '劳苦功高', '高瞻远瞩',
+            '瞩目而视', '视死如归', '归心似箭', '箭在弦上', '上善若水',
+            '水落石出', '出人头地', '地大物博', '博古通今', '今非昔比',
+            '比翼双飞', '飞黄腾达', '达官贵人', '人山人海', '海阔天空',
+            '空前绝后', '后来居上', '上行下效', '效死疆场', '场场爆满',
+            '满面红光', '光明磊落', '落井下石', '石破天惊', '惊天动地',
+            '地久天长', '长驱直入', '入木三分', '分秒必争', '争先恐后',
+            '后生可畏', '畏首畏尾', '尾大不掉', '掉以轻心', '心旷神怡',
+            '怡然自得', '得心应手', '手到擒来', '来日方长', '长篇大论',
+            '论功行赏', '赏心悦目', '目不转睛', '睛明眼亮', '亮剑出鞘',
+            '鞘中宝剑', '剑拔弩张', '张冠李戴', '戴月披星', '星火燎原',
+            '原原本本', '本末倒置', '置之度外', '外强中干', '干净利落',
+            '落花流水', '水滴石穿', '穿针引线', '线断风筝', '筝鸣瑟应',
+            '应有尽有', '有口皆碑', '碑立传名', '名垂青史', '史无前例'
+        ];
+        
+        let currentChar = '开';
+        let score = 0;
+        let chain = 0;
+        let hints = 3;
+        let usedIdioms = [];
+        let history = [];
+        
+        function findIdiomStartWith(char) {
+            return idioms.filter(id => 
+                id[0] === char && !usedIdioms.includes(id)
+            );
+        }
+        
+        function submitIdiom() {
+            const input = document.getElementById('userInput');
+            const message = document.getElementById('message');
+            const idiom = input.value.trim();
+            
+            if (idiom.length !== 4) {
+                message.className = 'message error';
+                message.textContent = '请输入四字成语！';
+                return;
+            }
+            
+            if (idiom[0] !== currentChar) {
+                message.className = 'message error';
+                message.textContent = `成语必须以"${currentChar}"开头！`;
+                return;
+            }
+            
+            if (!idioms.includes(idiom)) {
+                message.className = 'message error';
+                message.textContent = '这不是有效的成语！';
+                return;
+            }
+            
+            if (usedIdioms.includes(idiom)) {
+                message.className = 'message error';
+                message.textContent = '这个成语已经用过了！';
+                return;
+            }
+            
+            // Correct!
+            usedIdioms.push(idiom);
+            history.push(idiom);
+            chain++;
+            score += 10 + chain * 2;
+            currentChar = idiom[3];
+            
+            message.className = 'message success';
+            message.textContent = '✓ 正确！继续！';
+            
+            document.getElementById('currentIdiom').textContent = idiom;
+            document.getElementById('lastChar').textContent = currentChar;
+            document.getElementById('score').textContent = score;
+            document.getElementById('chain').textContent = chain;
+            
+            updateHistory();
+            input.value = '';
+            
+            // Check if possible to continue
+            if (findIdiomStartWith(currentChar).length === 0) {
+                message.className = 'message error';
+                message.textContent = '无法继续！游戏结束！';
+            }
+        }
+        
+        function updateHistory() {
+            const historyDiv = document.getElementById('history');
+            historyDiv.innerHTML = history.slice(-10).map(id => 
+                `<div class="history-item">${id}</div>`
+            ).join('');
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+        
+        function showHint() {
+            if (hints <= 0) {
+                alert('没有提示次数了！');
+                return;
+            }
+            
+            const available = findIdiomStartWith(currentChar);
+            if (available.length === 0) {
+                alert('没有可用的成语了！');
+                return;
+            }
+            
+            const hint = available[0];
+            alert(`提示: ${hint[0]}_ _ _`);
+            hints--;
+            score = Math.max(0, score - 10);
+            document.getElementById('hints').textContent = hints;
+            document.getElementById('score').textContent = score;
+        }
+        
+        function skipWord() {
+            const available = findIdiomStartWith(currentChar);
+            if (available.length > 0) {
+                currentChar = available[0][3];
+                usedIdioms.push(available[0]);
+                document.getElementById('lastChar').textContent = currentChar;
+                chain = 0;
+                document.getElementById('chain').textContent = chain;
+            }
+        }
+        
+        document.getElementById('userInput').addEventListener('keypress', e => {
+            if (e.key === 'Enter') submitIdiom();
+        });
+        
+        // Start
+        document.getElementById('lastChar').textContent = currentChar;
+    </script>
+</body>
+</html>

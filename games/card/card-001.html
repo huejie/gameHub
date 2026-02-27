@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>21点 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .cards-area {
+            margin: 30px 0;
+            padding: 20px;
+            background: #2d5016;
+            border-radius: 15px;
+            min-height: 180px;
+        }
+
+        .area-title {
+            color: #fff;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .cards {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 70px;
+            height: 100px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            animation: dealCard 0.3s ease;
+        }
+
+        @keyframes dealCard {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .card.red {
+            color: #e74c3c;
+        }
+
+        .card.black {
+            color: #2c3e50;
+        }
+
+        .card.hidden {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .card-value {
+            font-size: 1.2em;
+        }
+
+        .card-suit {
+            font-size: 0.8em;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.win {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .message.lose {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+
+        .message.tie {
+            background: #fff3bf;
+            color: #e67700;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🃏 21点</h1>
+        <p>尽量接近21点但不要爆牌</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">筹码</div>
+                <div class="info-value" id="chips">1000</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">当前下注</div>
+                <div class="info-value" id="bet">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">局数</div>
+                <div class="info-value" id="rounds">0</div>
+            </div>
+        </div>
+
+        <div class="cards-area">
+            <div class="area-title">庄家的牌 (<span id="dealerScore">0</span>点)</div>
+            <div class="cards" id="dealerCards"></div>
+        </div>
+
+        <div class="cards-area">
+            <div class="area-title">你的牌 (<span id="playerScore">0</span>点)</div>
+            <div class="cards" id="playerCards"></div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="buttons">
+            <button class="btn-primary" id="hitBtn" onclick="hit()" disabled>要牌</button>
+            <button class="btn-primary" id="standBtn" onclick="stand()" disabled>停牌</button>
+            <button class="btn-primary" id="betBtn" onclick="placeBet()">下注 (100)</button>
+            <button class="btn-secondary" onclick="resetGame()">新游戏</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        const suits = ['♠', '♥', '♦', '♣'];
+        const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+        
+        let deck = [];
+        let playerHand = [];
+        let dealerHand = [];
+        let chips = 1000;
+        let currentBet = 0;
+        let rounds = 0;
+        let gameInProgress = false;
+
+        function createDeck() {
+            deck = [];
+            for (let suit of suits) {
+                for (let value of values) {
+                    deck.push({ suit, value });
+                }
+            }
+            // 洗牌
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+        }
+
+        function getCardValue(card) {
+            if (card.value === 'A') return 11;
+            if (['K', 'Q', 'J'].includes(card.value)) return 10;
+            return parseInt(card.value);
+        }
+
+        function calculateScore(hand) {
+            let score = 0;
+            let aces = 0;
+
+            for (let card of hand) {
+                score += getCardValue(card);
+                if (card.value === 'A') aces++;
+            }
+
+            // A可以算1或11
+            while (score > 21 && aces > 0) {
+                score -= 10;
+                aces--;
+            }
+
+            return score;
+        }
+
+        function renderCard(card, hidden = false) {
+            const isRed = card.suit === '♥' || card.suit === '♦';
+            
+            if (hidden) {
+                return `<div class="card hidden">?</div>`;
+            }
+            
+            return `
+                <div class="card ${isRed ? 'red' : 'black'}">
+                    <div class="card-value">${card.value}</div>
+                    <div class="card-suit">${card.suit}</div>
+                </div>
+            `;
+        }
+
+        function updateDisplay(showDealerCard = false) {
+            // 玩家手牌
+            document.getElementById('playerCards').innerHTML = 
+                playerHand.map(card => renderCard(card)).join('');
+            document.getElementById('playerScore').textContent = calculateScore(playerHand);
+
+            // 庄家手牌
+            if (showDealerCard) {
+                document.getElementById('dealerCards').innerHTML = 
+                    dealerHand.map(card => renderCard(card)).join('');
+                document.getElementById('dealerScore').textContent = calculateScore(dealerHand);
+            } else {
+                document.getElementById('dealerCards').innerHTML = 
+                    renderCard(dealerHand[0]) + renderCard(dealerHand[1], true);
+                document.getElementById('dealerScore').textContent = getCardValue(dealerHand[0]);
+            }
+
+            // 更新信息
+            document.getElementById('chips').textContent = chips;
+            document.getElementById('bet').textContent = currentBet;
+            document.getElementById('rounds').textContent = rounds;
+        }
+
+        function placeBet() {
+            if (gameInProgress) return;
+            if (chips < 100) {
+                alert('筹码不足！');
+                return;
+            }
+
+            currentBet = 100;
+            chips -= 100;
+            gameInProgress = true;
+            rounds++;
+
+            // 发牌
+            createDeck();
+            playerHand = [deck.pop(), deck.pop()];
+            dealerHand = [deck.pop(), deck.pop()];
+
+            updateDisplay();
+
+            // 启用按钮
+            document.getElementById('hitBtn').disabled = false;
+            document.getElementById('standBtn').disabled = false;
+            document.getElementById('betBtn').disabled = true;
+
+            // 检查是否21点
+            if (calculateScore(playerHand) === 21) {
+                stand();
+            }
+        }
+
+        function hit() {
+            if (!gameInProgress) return;
+
+            playerHand.push(deck.pop());
+            updateDisplay();
+
+            if (calculateScore(playerHand) > 21) {
+                endGame('lose', '爆牌了！你输了');
+            }
+        }
+
+        function stand() {
+            if (!gameInProgress) return;
+
+            // 庄家抽牌
+            while (calculateScore(dealerHand) < 17) {
+                dealerHand.push(deck.pop());
+            }
+
+            updateDisplay(true);
+
+            const playerScore = calculateScore(playerHand);
+            const dealerScore = calculateScore(dealerHand);
+
+            if (dealerScore > 21) {
+                endGame('win', '庄家爆牌！你赢了');
+            } else if (playerScore > dealerScore) {
+                endGame('win', '你赢了！');
+            } else if (playerScore < dealerScore) {
+                endGame('lose', '庄家赢了');
+            } else {
+                endGame('tie', '平局');
+            }
+        }
+
+        function endGame(result, message) {
+            gameInProgress = false;
+
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message show ${result}`;
+
+            if (result === 'win') {
+                chips += currentBet * 2;
+            } else if (result === 'tie') {
+                chips += currentBet;
+            }
+
+            currentBet = 0;
+            updateDisplay(true);
+
+            // 禁用按钮
+            document.getElementById('hitBtn').disabled = true;
+            document.getElementById('standBtn').disabled = true;
+            document.getElementById('betBtn').disabled = false;
+        }
+
+        function resetGame() {
+            chips = 1000;
+            currentBet = 0;
+            rounds = 0;
+            gameInProgress = false;
+            playerHand = [];
+            dealerHand = [];
+
+            document.getElementById('playerCards').innerHTML = '';
+            document.getElementById('dealerCards').innerHTML = '';
+            document.getElementById('playerScore').textContent = '0';
+            document.getElementById('dealerScore').textContent = '0';
+            document.getElementById('message').className = 'message';
+
+            document.getElementById('hitBtn').disabled = true;
+            document.getElementById('standBtn').disabled = true;
+            document.getElementById('betBtn').disabled = false;
+
+            updateDisplay();
+        }
+
+        // 初始化
+        resetGame();
+    </script>
+</body>
+</html>

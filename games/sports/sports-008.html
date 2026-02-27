@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>游泳比赛 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #3498db; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #2980b9; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🏊 游泳比赛</h1><p>快速按左右键游泳！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="time">0.0</div><div>时间</div></div>
+        <div class="stat"><div class="stat-value" id="best">-</div><div>最佳</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="250"></canvas>
+    <div style="text-align:center;margin-top:15px;"><button onclick="startRace()">开始比赛</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player = {x: 50, y: 60, speed: 0};
+        let ai = {x: 50, y: 130, speed: 0};
+        let racing = false, finished = false, startTime = 0, bestTime = null, lastKey = '';
+        
+        function draw() {
+            ctx.fillStyle = '#2980b9';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = '#fff';
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath(); ctx.moveTo(0, 95); ctx.lineTo(canvas.width, 95); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, 165); ctx.lineTo(canvas.width, 165); ctx.stroke();
+            ctx.setLineDash([]);
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(canvas.width - 20, 0, 5, canvas.height);
+            
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath(); ctx.ellipse(player.x, player.y, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath(); ctx.ellipse(ai.x, ai.y, 15, 8, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        
+        function update() {
+            if (racing && !finished) {
+                player.x += player.speed;
+                player.speed *= 0.95;
+                ai.x += 1.5 + Math.sin(Date.now() / 500) * 0.3;
+                
+                document.getElementById('time').textContent = ((Date.now() - startTime) / 1000).toFixed(1);
+                
+                if (player.x >= canvas.width - 30 || ai.x >= canvas.width - 30) {
+                    finished = true;
+                    const t = (Date.now() - startTime) / 1000;
+                    if (player.x >= ai.x) {
+                        if (!bestTime || t < bestTime) { bestTime = t; document.getElementById('best').textContent = t.toFixed(1); }
+                        alert(`🏆 胜利！时间: ${t.toFixed(1)}秒`);
+                    } else {
+                        alert(`😢 失败！AI更快`);
+                    }
+                }
+            }
+            draw();
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (!racing) return;
+            if ((e.code === 'ArrowLeft' && lastKey !== 'ArrowLeft') || (e.code === 'ArrowRight' && lastKey !== 'ArrowRight')) {
+                player.speed = 3;
+                lastKey = e.code;
+            }
+        });
+        
+        function startRace() {
+            player = {x: 50, y: 60, speed: 0};
+            ai = {x: 50, y: 130, speed: 0};
+            racing = true;
+            finished = false;
+            startTime = Date.now();
+            lastKey = '';
+        }
+        
+        update();
+    </script>
+</body>
+</html>

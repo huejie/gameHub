@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>围棋简化版 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .board { display: grid; grid-template-columns: repeat(9, 40px); gap: 0; background: #dcb35c; padding: 10px; border-radius: 10px; }
+        .cell { width: 40px; height: 40px; position: relative; cursor: pointer; }
+        .cell::before, .cell::after { content: ''; position: absolute; background: #000; }
+        .cell::before { width: 1px; height: 100%; left: 50%; }
+        .cell::after { width: 100%; height: 1px; top: 50%; }
+        .stone { position: absolute; width: 34px; height: 34px; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1; }
+        .stone.black { background: #2d3436; }
+        .stone.white { background: #fff; border: 1px solid #ccc; }
+        .stats { margin: 15px 0; text-align: center; font-size: 1.2rem; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #2d3436; color: white; font-weight: bold; margin: 10px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>⚫ 围棋简化版</h1><p>9x9棋盘，围住对方棋子！</p></div>
+    <div class="stats" id="status">黑方回合</div>
+    <div class="board" id="board"></div>
+    <button onclick="newGame()">新游戏</button>
+    <button onclick="pass()">跳过</button>
+    <script>
+        const SIZE = 9;
+        let board = [], turn = 'black', passes = 0;
+        
+        function newGame() {
+            board = Array(SIZE).fill(null).map(() => Array(SIZE).fill(null));
+            turn = 'black';
+            passes = 0;
+            document.getElementById('status').textContent = '黑方回合';
+            render();
+        }
+        
+        function render() {
+            const el = document.getElementById('board');
+            el.innerHTML = '';
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    if (board[r][c]) {
+                        const stone = document.createElement('div');
+                        stone.className = 'stone ' + board[r][c];
+                        cell.appendChild(stone);
+                    }
+                    cell.onclick = () => place(r, c);
+                    el.appendChild(cell);
+                }
+            }
+        }
+        
+        function place(r, c) {
+            if (board[r][c]) return;
+            board[r][c] = turn;
+            passes = 0;
+            capture();
+            turn = turn === 'black' ? 'white' : 'black';
+            document.getElementById('status').textContent = turn === 'black' ? '黑方回合' : '白方回合';
+            render();
+        }
+        
+        function capture() {
+            const visited = new Set();
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c] && !visited.has(`${r},${c}`)) {
+                        const group = getGroup(r, c);
+                        group.forEach(p => visited.add(`${p.r},${p.c}`));
+                        if (!hasLiberty(group)) group.forEach(p => board[p.r][p.c] = null);
+                    }
+                }
+            }
+        }
+        
+        function getGroup(r, c) {
+            const color = board[r][c], group = [], stack = [{r, c}], visited = new Set();
+            while (stack.length) {
+                const {r, c} = stack.pop();
+                if (visited.has(`${r},${c}`)) continue;
+                if (board[r][c] !== color) continue;
+                visited.add(`${r},${c}`);
+                group.push({r, c});
+                [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr, nc]) => {
+                    if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE) stack.push({r: nr, c: nc});
+                });
+            }
+            return group;
+        }
+        
+        function hasLiberty(group) {
+            for (const {r, c} of group) {
+                for (const [nr, nc] of [[r-1,c],[r+1,c],[r,c-1],[r,c+1]]) {
+                    if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && !board[nr][nc]) return true;
+                }
+            }
+            return false;
+        }
+        
+        function pass() {
+            passes++;
+            if (passes >= 2) {
+                let b = 0, w = 0;
+                for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+                    if (board[r][c] === 'black') b++;
+                    if (board[r][c] === 'white') w++;
+                }
+                document.getElementById('status').textContent = `结束！黑${b} 白${w}`;
+            } else {
+                turn = turn === 'black' ? 'white' : 'black';
+                document.getElementById('status').textContent = turn === 'black' ? '黑方回合' : '白方回合';
+            }
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

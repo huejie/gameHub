@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>反应速度测试 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+
+        .game-area {
+            width: 300px;
+            height: 300px;
+            margin: 30px auto;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .game-area.waiting {
+            background: #ff6b6b;
+        }
+
+        .game-area.ready {
+            background: #51cf66;
+        }
+
+        .game-area.too-early {
+            background: #ff6b6b;
+        }
+
+        .game-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            padding: 20px;
+        }
+
+        .stats {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            margin: 10px 0;
+            font-size: 1.2em;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: bold;
+            font-size: 1.5em;
+        }
+
+        .result {
+            display: none;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .result.fast {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .result.normal {
+            background: #fff3bf;
+            color: #e67700;
+        }
+
+        .result.slow {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .history {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .history-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .history-list {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .history-item {
+            padding: 5px 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ 反应速度测试</h1>
+        <p>当圆圈变绿时，尽快点击！</p>
+
+        <div class="game-area" id="gameArea" onclick="handleClick()">
+            <div class="game-text" id="gameText">点击开始</div>
+        </div>
+
+        <div class="result" id="result"></div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <span class="stat-label">最佳成绩：</span>
+                <span class="stat-value" id="bestTime">--</span>
+                <span class="stat-label">ms</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">平均成绩：</span>
+                <span class="stat-value" id="avgTime">--</span>
+                <span class="stat-label">ms</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">测试次数：</span>
+                <span class="stat-value" id="attempts">0</span>
+            </div>
+        </div>
+
+        <div class="history">
+            <div class="history-title">历史记录</div>
+            <div class="history-list" id="historyList">
+                <div class="history-item">暂无记录</div>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-primary" onclick="resetGame()">🔄 重置</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        let gameState = 'idle'; // idle, waiting, ready, result
+        let startTime = 0;
+        let reactionTime = 0;
+        let attempts = 0;
+        let times = [];
+        let timeoutId = null;
+
+        const gameArea = document.getElementById('gameArea');
+        const gameText = document.getElementById('gameText');
+        const result = document.getElementById('result');
+
+        function handleClick() {
+            if (gameState === 'idle') {
+                startGame();
+            } else if (gameState === 'waiting') {
+                tooEarly();
+            } else if (gameState === 'ready') {
+                endGame();
+            }
+        }
+
+        function startGame() {
+            gameState = 'waiting';
+            gameArea.className = 'game-area waiting';
+            gameText.textContent = '等待绿色...';
+            result.className = 'result';
+
+            // 随机等待1-4秒
+            const waitTime = Math.random() * 3000 + 1000;
+            timeoutId = setTimeout(() => {
+                gameState = 'ready';
+                gameArea.className = 'game-area ready';
+                gameText.textContent = '点击！';
+                startTime = Date.now();
+            }, waitTime);
+        }
+
+        function tooEarly() {
+            clearTimeout(timeoutId);
+            gameState = 'idle';
+            gameArea.className = 'game-area too-early';
+            gameText.textContent = '太早了！点击重试';
+            result.textContent = '😅 点击太早了！';
+            result.className = 'result show slow';
+        }
+
+        function endGame() {
+            reactionTime = Date.now() - startTime;
+            gameState = 'result';
+            attempts++;
+            times.push(reactionTime);
+
+            // 更新统计
+            updateStats();
+
+            // 显示结果
+            let resultClass, resultText;
+            if (reactionTime < 200) {
+                resultClass = 'fast';
+                resultText = '🎉 超快！';
+            } else if (reactionTime < 300) {
+                resultClass = 'normal';
+                resultText = '👍 不错！';
+            } else {
+                resultClass = 'slow';
+                resultText = '🐢 再快一点！';
+            }
+
+            result.textContent = `${resultText} ${reactionTime}ms`;
+            result.className = `result show ${resultClass}`;
+            gameText.textContent = `${reactionTime}ms`;
+
+            // 1秒后重置
+            setTimeout(() => {
+                gameState = 'idle';
+                gameArea.className = 'game-area';
+                gameText.textContent = '点击继续';
+            }, 1500);
+        }
+
+        function updateStats() {
+            const best = Math.min(...times);
+            const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+
+            document.getElementById('bestTime').textContent = best;
+            document.getElementById('avgTime').textContent = avg;
+            document.getElementById('attempts').textContent = attempts;
+
+            // 更新历史记录
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = times
+                .slice(-10)
+                .reverse()
+                .map((time, index) => `<div class="history-item">#${times.length - index}: ${time}ms</div>`)
+                .join('');
+        }
+
+        function resetGame() {
+            clearTimeout(timeoutId);
+            gameState = 'idle';
+            attempts = 0;
+            times = [];
+            reactionTime = 0;
+
+            gameArea.className = 'game-area';
+            gameText.textContent = '点击开始';
+            result.className = 'result';
+
+            document.getElementById('bestTime').textContent = '--';
+            document.getElementById('avgTime').textContent = '--';
+            document.getElementById('attempts').textContent = '0';
+            document.getElementById('historyList').innerHTML = '<div class="history-item">暂无记录</div>';
+        }
+
+        // 初始化
+        resetGame();
+    </script>
+</body>
+</html>

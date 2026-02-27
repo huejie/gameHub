@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打字赛车 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            color: #2d3436;
+        }
+        .race-track {
+            background: #2c3e50;
+            border-radius: 10px;
+            height: 150px;
+            position: relative;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .track-line {
+            position: absolute;
+            bottom: 30px;
+            left: 0; right: 0;
+            height: 3px;
+            background: repeating-linear-gradient(90deg, #fff 0, #fff 20px, transparent 20px, transparent 40px);
+        }
+        .car {
+            position: absolute;
+            font-size: 2rem;
+            transition: left 0.2s;
+        }
+        .car.player { bottom: 50px; }
+        .car.opponent { bottom: 15px; opacity: 0.7; }
+        .finish-line {
+            position: absolute;
+            right: 20px; top: 0; bottom: 0;
+            width: 8px;
+            background: repeating-linear-gradient(0deg, #000 0, #000 10px, #fff 10px, #fff 20px);
+        }
+        .word-display {
+            font-size: 1.8rem;
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 20px 0;
+            letter-spacing: 2px;
+            font-family: monospace;
+        }
+        .word-display .correct { color: #27ae60; }
+        .word-display .current { color: #3498db; background: #d5f5e3; padding: 2px; }
+        .word-display .wrong { color: #e74c3c; background: #fadbd8; padding: 2px; }
+        input {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.3rem;
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            text-align: center;
+        }
+        input:focus { outline: none; border-color: #2ecc71; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #3498db; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #2980b9; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🏎️ 打字赛车</h1>
+        <p>快速打字赢得比赛！</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="wpm">0</div><div>字/分钟</div></div>
+            <div class="stat"><div class="stat-value" id="accuracy">100%</div><div>准确率</div></div>
+            <div class="stat"><div class="stat-value" id="progress">0%</div><div>进度</div></div>
+        </div>
+        <div class="race-track">
+            <div class="finish-line"></div>
+            <div class="track-line"></div>
+            <div class="car player" id="playerCar">🚗</div>
+            <div class="car opponent" id="opponentCar">🚙</div>
+        </div>
+        <div class="word-display" id="wordDisplay"></div>
+        <input type="text" id="userInput" placeholder="在此输入..." autocomplete="off">
+        <div class="controls">
+            <button onclick="startGame()">开始游戏</button>
+        </div>
+    </div>
+    <script>
+        const words = [
+            'race','speed','fast','car','drive','win','track','lap','tire','engine',
+            'quick','swift','zoom','rush','dash','sprint','turbo','boost','nitro','gear',
+            'helmet','steer','brake','accelerate','champion','victory','finish','start','go','run'
+        ];
+        
+        let wordList = [];
+        let currentIndex = 0;
+        let correctChars = 0;
+        let totalChars = 0;
+        let startTime = null;
+        let playerPos = 5;
+        let opponentPos = 5;
+        let gameRunning = false;
+        
+        function generateWords() {
+            wordList = [];
+            for (let i = 0; i < 20; i++) {
+                wordList.push(words[Math.floor(Math.random() * words.length)]);
+            }
+        }
+        
+        function displayWord() {
+            const display = document.getElementById('wordDisplay');
+            const input = document.getElementById('userInput').value;
+            const currentWord = wordList[currentIndex];
+            
+            let html = '';
+            for (let i = 0; i < currentWord.length; i++) {
+                if (i < input.length) {
+                    if (input[i] === currentWord[i]) {
+                        html += `<span class="correct">${currentWord[i]}</span>`;
+                    } else {
+                        html += `<span class="wrong">${currentWord[i]}</span>`;
+                    }
+                } else if (i === input.length) {
+                    html += `<span class="current">${currentWord[i]}</span>`;
+                } else {
+                    html += currentWord[i];
+                }
+            }
+            display.innerHTML = html;
+        }
+        
+        function updateCars() {
+            const trackWidth = document.querySelector('.race-track').offsetWidth - 60;
+            const playerCar = document.getElementById('playerCar');
+            const opponentCar = document.getElementById('opponentCar');
+            
+            playerCar.style.left = (playerPos / 100 * trackWidth) + 'px';
+            opponentCar.style.left = (opponentPos / 100 * trackWidth) + 'px';
+        }
+        
+        function updateStats() {
+            if (startTime) {
+                const elapsed = (Date.now() - startTime) / 1000 / 60; // minutes
+                const wpm = Math.round(correctChars / 5 / elapsed) || 0;
+                document.getElementById('wpm').textContent = wpm;
+            }
+            
+            const accuracy = totalChars > 0 ? Math.round((correctChars / totalChars) * 100) : 100;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            const progress = Math.round((currentIndex / wordList.length) * 100);
+            document.getElementById('progress').textContent = progress + '%';
+        }
+        
+        function moveOpponent() {
+            if (!gameRunning) return;
+            opponentPos += 0.3 + Math.random() * 0.2;
+            if (opponentPos >= 100) {
+                endGame(false);
+            }
+        }
+        
+        const input = document.getElementById('userInput');
+        input.addEventListener('input', () => {
+            if (!gameRunning) return;
+            
+            if (!startTime) startTime = Date.now();
+            
+            const currentWord = wordList[currentIndex];
+            const typed = input.value;
+            
+            totalChars = typed.length;
+            correctChars = 0;
+            for (let i = 0; i < typed.length && i < currentWord.length; i++) {
+                if (typed[i] === currentWord[i]) correctChars++;
+            }
+            
+            displayWord();
+            updateStats();
+            
+            // Check if word completed
+            if (typed === currentWord + ' ' || typed === currentWord) {
+                currentIndex++;
+                playerPos = (currentIndex / wordList.length) * 100;
+                updateCars();
+                
+                if (currentIndex >= wordList.length) {
+                    endGame(true);
+                } else {
+                    input.value = '';
+                    displayWord();
+                }
+            }
+        });
+        
+        function startGame() {
+            generateWords();
+            currentIndex = 0;
+            correctChars = 0;
+            totalChars = 0;
+            startTime = null;
+            playerPos = 5;
+            opponentPos = 5;
+            gameRunning = true;
+            
+            input.value = '';
+            input.focus();
+            displayWord();
+            updateCars();
+            updateStats();
+            
+            // Opponent movement
+            setInterval(moveOpponent, 100);
+        }
+        
+        function endGame(won) {
+            gameRunning = false;
+            const wpm = document.getElementById('wpm').textContent;
+            const accuracy = document.getElementById('accuracy').textContent;
+            alert(won ? `🎉 你赢了！\n速度: ${wpm} 字/分钟\n准确率: ${accuracy}` : `😢 你输了！\n速度: ${wpm} 字/分钟\n准确率: ${accuracy}`);
+        }
+        
+        generateWords();
+        displayWord();
+        updateCars();
+    </script>
+</body>
+</html>

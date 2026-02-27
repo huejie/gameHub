@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色匹配 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; max-width: 400px; }
+        .display { font-size: 4rem; font-weight: bold; margin: 20px 0; padding: 20px; background: rgba(0,0,0,0.2); border-radius: 10px; }
+        .buttons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+        .btn { width: 80px; height: 50px; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; color: white; font-size: 1rem; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎨 颜色匹配</h1><p>文字颜色和含义是否一致？</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="time">30</div><div>时间</div></div>
+        </div>
+        <div class="display" id="display">准备</div>
+        <div class="buttons">
+            <button class="btn" style="background:#2ecc71" onclick="answer(true)">一致</button>
+            <button class="btn" style="background:#e74c3c" onclick="answer(false)">不一致</button>
+        </div>
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        const colors = [
+            {name: '红', color: '#e74c3c'},
+            {name: '蓝', color: '#3498db'},
+            {name: '绿', color: '#2ecc71'},
+            {name: '黄', color: '#f1c40f'},
+            {name: '紫', color: '#9b59b6'}
+        ];
+        
+        let current = null, score = 0, timeLeft = 30, timer = null, gameRunning = false;
+        
+        function generate() {
+            const nameColor = colors[Math.floor(Math.random() * colors.length)];
+            const displayColor = colors[Math.floor(Math.random() * colors.length)];
+            current = {
+                name: nameColor.name,
+                color: displayColor.color,
+                match: nameColor === displayColor
+            };
+            
+            const display = document.getElementById('display');
+            display.textContent = current.name;
+            display.style.color = current.color;
+        }
+        
+        function answer(isMatch) {
+            if (!gameRunning) return;
+            
+            if (isMatch === current.match) {
+                score += 10;
+                document.getElementById('score').textContent = score;
+            }
+            
+            generate();
+        }
+        
+        function startGame() {
+            clearInterval(timer);
+            score = 0;
+            timeLeft = 30;
+            gameRunning = true;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('time').textContent = '30';
+            
+            generate();
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    gameRunning = false;
+                    clearInterval(timer);
+                    document.getElementById('display').textContent = '结束';
+                    document.getElementById('display').style.color = 'white';
+                    setTimeout(() => alert(`游戏结束！得分: ${score}`), 100);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

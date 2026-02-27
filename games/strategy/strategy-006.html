@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四子棋 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .board { display: grid; grid-template-columns: repeat(7, 50px); gap: 3px; background: #2c3e50; padding: 10px; border-radius: 10px; }
+        .cell { width: 50px; height: 50px; background: #34495e; border-radius: 50%; cursor: pointer; transition: background 0.2s; }
+        .cell:hover { background: #4a6741; }
+        .cell.red { background: #e74c3c; }
+        .cell.yellow { background: #f1c40f; }
+        .stats { margin: 15px 0; text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; margin: 10px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🔴 四子棋</h1><p>四子连成一线获胜！</p></div>
+    <div class="stats" id="status">你的回合 (红色)</div>
+    <div class="board" id="board"></div>
+    <button onclick="newGame()">新游戏</button>
+    <script>
+        const ROWS = 6, COLS = 7;
+        let board = [], currentPlayer = 1, gameOver = false;
+        
+        function newGame() {
+            board = Array(ROWS).fill(null).map(() => Array(COLS).fill(0));
+            currentPlayer = 1;
+            gameOver = false;
+            document.getElementById('status').textContent = '你的回合 (红色)';
+            render();
+        }
+        
+        function render() {
+            const el = document.getElementById('board');
+            el.innerHTML = '';
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell' + (board[r][c] === 1 ? ' red' : board[r][c] === 2 ? ' yellow' : '');
+                    cell.onclick = () => drop(c);
+                    el.appendChild(cell);
+                }
+            }
+        }
+        
+        function drop(col) {
+            if (gameOver || currentPlayer !== 1) return;
+            
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === 0) {
+                    board[r][col] = 1;
+                    render();
+                    if (checkWin(1)) { gameOver = true; document.getElementById('status').textContent = '🎉 你赢了！'; return; }
+                    currentPlayer = 2;
+                    document.getElementById('status').textContent = '电脑思考中...';
+                    setTimeout(aiMove, 500);
+                    return;
+                }
+            }
+        }
+        
+        function aiMove() {
+            if (gameOver) return;
+            
+            // Simple AI: random valid column
+            const validCols = [];
+            for (let c = 0; c < COLS; c++) {
+                if (board[0][c] === 0) validCols.push(c);
+            }
+            
+            const col = validCols[Math.floor(Math.random() * validCols.length)];
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (board[r][col] === 0) {
+                    board[r][col] = 2;
+                    render();
+                    if (checkWin(2)) { gameOver = true; document.getElementById('status').textContent = '😢 电脑赢了！'; return; }
+                    currentPlayer = 1;
+                    document.getElementById('status').textContent = '你的回合 (红色)';
+                    return;
+                }
+            }
+        }
+        
+        function checkWin(player) {
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    if (board[r][c] === player && board[r][c+1] === player && 
+                        board[r][c+2] === player && board[r][c+3] === player) return true;
+                }
+            }
+            for (let r = 0; r < ROWS - 3; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (board[r][c] === player && board[r+1][c] === player && 
+                        board[r+2][c] === player && board[r+3][c] === player) return true;
+                }
+            }
+            for (let r = 0; r < ROWS - 3; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    if (board[r][c] === player && board[r+1][c+1] === player && 
+                        board[r+2][c+2] === player && board[r+3][c+3] === player) return true;
+                }
+            }
+            for (let r = 3; r < ROWS; r++) {
+                for (let c = 0; c < COLS - 3; c++) {
+                    if (board[r][c] === player && board[r-1][c+1] === player && 
+                        board[r-2][c+2] === player && board[r-3][c+3] === player) return true;
+                }
+            }
+            return false;
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

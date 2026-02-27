@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹珠台 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #6c5ce7; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #6c5ce7; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎱 弹珠台</h1><p>按空格发射弹珠，左右键控制挡板</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="balls">5</div><div>弹珠</div></div>
+    </div>
+    <canvas id="canvas" width="300" height="500"></canvas>
+    <div class="controls"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let ball, paddles, bumpers, score = 0, balls = 5, launched = false, power = 0, charging = false;
+        
+        function newGame() {
+            score = 0; balls = 5;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('balls').textContent = '5';
+            resetBall();
+            
+            paddles = [
+                {x: 50, y: 420, angle: 0.3, width: 60},
+                {x: 190, y: 420, angle: -0.3, width: 60}
+            ];
+            
+            bumpers = [
+                {x: 150, y: 150, r: 25, points: 100},
+                {x: 80, y: 200, r: 20, points: 50},
+                {x: 220, y: 200, r: 20, points: 50},
+                {x: 150, y: 280, r: 18, points: 30}
+            ];
+            
+            update();
+        }
+        
+        function resetBall() {
+            ball = {x: 280, y: 450, vx: 0, vy: 0, r: 8};
+            launched = false;
+            power = 0;
+        }
+        
+        function update() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw walls
+            ctx.strokeStyle = '#6c5ce7';
+            ctx.lineWidth = 5;
+            ctx.strokeRect(10, 10, 280, 480);
+            
+            // Draw launch area
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(260, 350, 30, 140);
+            
+            // Draw bumpers
+            bumpers.forEach(b => {
+                ctx.fillStyle = '#e74c3c';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(b.points, b.x, b.y + 4);
+            });
+            
+            // Draw paddles
+            paddles.forEach((p, i) => {
+                ctx.save();
+                ctx.translate(p.x + p.width/2, p.y);
+                ctx.rotate(p.angle);
+                ctx.fillStyle = '#3498db';
+                ctx.fillRect(-p.width/2, -5, p.width, 10);
+                ctx.restore();
+            });
+            
+            // Draw ball
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Power bar
+            if (charging) {
+                ctx.fillStyle = '#27ae60';
+                ctx.fillRect(265, 480 - power * 1.2, 20, power * 1.2);
+            }
+            
+            if (launched) {
+                // Physics
+                ball.vy += 0.3;
+                ball.x += ball.vx;
+                ball.y += ball.vy;
+                
+                // Wall collision
+                if (ball.x < 20 + ball.r) { ball.x = 20 + ball.r; ball.vx *= -0.8; }
+                if (ball.x > 250 - ball.r) { ball.x = 250 - ball.r; ball.vx *= -0.8; }
+                if (ball.y < 20 + ball.r) { ball.y = 20 + ball.r; ball.vy *= -0.8; }
+                
+                // Bumper collision
+                bumpers.forEach(b => {
+                    const dx = ball.x - b.x;
+                    const dy = ball.y - b.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < b.r + ball.r) {
+                        const angle = Math.atan2(dy, dx);
+                        ball.vx = Math.cos(angle) * 8;
+                        ball.vy = Math.sin(angle) * 8;
+                        score += b.points;
+                        document.getElementById('score').textContent = score;
+                    }
+                });
+                
+                // Paddle collision
+                paddles.forEach((p, i) => {
+                    if (ball.y > p.y - 20 && ball.y < p.y + 10 && ball.x > p.x && ball.x < p.x + p.width) {
+                        ball.vy = -Math.abs(ball.vy) - 5;
+                        ball.vx += (i === 0 ? 3 : -3);
+                    }
+                });
+                
+                // Ball lost
+                if (ball.y > canvas.height) {
+                    balls--;
+                    document.getElementById('balls').textContent = balls;
+                    if (balls <= 0) {
+                        alert(`游戏结束！得分: ${score}`);
+                        return;
+                    }
+                    resetBall();
+                }
+            }
+            
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (e.code === 'Space' && !launched) {
+                charging = true;
+                power = Math.min(power + 5, 100);
+            }
+            if (e.code === 'ArrowLeft') paddles[0].angle = -0.5;
+            if (e.code === 'ArrowRight') paddles[1].angle = 0.5;
+        });
+        
+        document.addEventListener('keyup', e => {
+            if (e.code === 'Space' && charging) {
+                launched = true;
+                ball.vy = -power * 0.15;
+                ball.vx = -2;
+                charging = false;
+                power = 0;
+            }
+            if (e.code === 'ArrowLeft') paddles[0].angle = 0.3;
+            if (e.code === 'ArrowRight') paddles[1].angle = -0.3;
+        });
+        
+        newGame();
+    </script>
+</body>
+</html>

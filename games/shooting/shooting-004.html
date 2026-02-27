@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>气球射击 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+        }
+        .header {
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            background: rgba(0,0,0,0.2);
+        }
+        .header h1 { font-size: 2rem; margin-bottom: 5px; }
+        .header p { opacity: 0.9; }
+        .game-container {
+            position: relative;
+            margin: 20px;
+        }
+        canvas {
+            border: 3px solid #fdcb6e;
+            border-radius: 10px;
+            cursor: crosshair;
+            background: linear-gradient(180deg, #dfe6e9 0%, #b2bec3 100%);
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #fdcb6e;
+            color: #2d3436;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        button:hover { background: #ffeaa7; transform: scale(1.05); }
+        .stats {
+            display: flex;
+            gap: 30px;
+            margin: 15px 0;
+            font-size: 1.2rem;
+        }
+        .stat { text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #fdcb6e; }
+        .back-link {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .timer {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    <div class="header">
+        <h1>🎈 气球射击</h1>
+        <p>在60秒内射中尽可能多的气球！</p>
+    </div>
+    
+    <div class="timer" id="timer">60</div>
+    
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value" id="score">0</div>
+            <div>得分</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="combo">x1</div>
+            <div>连击</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="missed">0</div>
+            <div>漏掉</div>
+        </div>
+    </div>
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="600" height="400"></canvas>
+    </div>
+    
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+        <button onclick="resetGame()">重新开始</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let balloons = [];
+        let score = 0;
+        let combo = 1;
+        let missed = 0;
+        let timeLeft = 60;
+        let gameRunning = false;
+        let gameTimer = null;
+        let lastHitTime = 0;
+        
+        const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e91e63'];
+        
+        // 响应式画布
+        function resizeCanvas() {
+            const maxWidth = Math.min(600, window.innerWidth - 40);
+            const ratio = maxWidth / 600;
+            canvas.style.width = maxWidth + 'px';
+            canvas.style.height = (400 * ratio) + 'px';
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 气球类
+        class Balloon {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 60) + 30;
+                this.y = canvas.height + 30;
+                this.size = 25 + Math.random() * 15;
+                this.speed = 1.5 + Math.random() * 2;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.wobble = Math.random() * Math.PI * 2;
+                this.wobbleSpeed = 0.05 + Math.random() * 0.05;
+                this.points = Math.ceil(this.size / 10);
+            }
+            
+            update() {
+                this.y -= this.speed;
+                this.wobble += this.wobbleSpeed;
+                this.x += Math.sin(this.wobble) * 0.5;
+            }
+            
+            draw() {
+                // 气球主体
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.size * 0.8, this.size, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 高光
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(this.x - this.size * 0.3, this.y - this.size * 0.3, this.size * 0.2, this.size * 0.3, -0.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 气球绳子
+                ctx.strokeStyle = '#7f8c8d';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.size);
+                ctx.quadraticCurveTo(this.x + 5, this.y + this.size + 20, this.x, this.y + this.size + 30);
+                ctx.stroke();
+            }
+            
+            isHit(x, y) {
+                const dist = Math.sqrt((this.x - x) ** 2 + (this.y - y) ** 2);
+                return dist < this.size;
+            }
+        }
+        
+        // 爆炸粒子
+        let particles = [];
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = Math.random() * 5 + 2;
+                this.speedX = (Math.random() - 0.5) * 8;
+                this.speedY = (Math.random() - 0.5) * 8;
+                this.alpha = 1;
+            }
+            
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= 0.02;
+                this.size *= 0.98;
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            isDone() {
+                return this.alpha <= 0;
+            }
+        }
+        
+        function spawnBalloon() {
+            if (Math.random() < 0.03 + score * 0.0005) {
+                balloons.push(new Balloon());
+            }
+        }
+        
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+        
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#dfe6e9');
+            gradient.addColorStop(1, '#b2bec3');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 生成气球
+            spawnBalloon();
+            
+            // 更新和绘制气球
+            for (let i = balloons.length - 1; i >= 0; i--) {
+                balloons[i].update();
+                balloons[i].draw();
+                
+                // 气球飞出顶部
+                if (balloons[i].y < -balloons[i].size - 30) {
+                    balloons.splice(i, 1);
+                    missed++;
+                    combo = 1;
+                    document.getElementById('missed').textContent = missed;
+                    document.getElementById('combo').textContent = 'x1';
+                }
+            }
+            
+            // 更新粒子
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].update();
+                particles[i].draw();
+                if (particles[i].isDone()) {
+                    particles.splice(i, 1);
+                }
+            }
+            
+            requestAnimationFrame(updateGame);
+        }
+        
+        function shoot(e) {
+            if (!gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            for (let i = balloons.length - 1; i >= 0; i--) {
+                if (balloons[i].isHit(x, y)) {
+                    createExplosion(balloons[i].x, balloons[i].y, balloons[i].color);
+                    
+                    // 连击系统
+                    if (Date.now() - lastHitTime < 1000) {
+                        combo = Math.min(combo + 1, 10);
+                    } else {
+                        combo = 1;
+                    }
+                    lastHitTime = Date.now();
+                    
+                    score += balloons[i].points * combo;
+                    balloons.splice(i, 1);
+                    
+                    document.getElementById('score').textContent = score;
+                    document.getElementById('combo').textContent = 'x' + combo;
+                    break;
+                }
+            }
+        }
+        
+        canvas.addEventListener('click', shoot);
+        
+        function startGame() {
+            if (gameRunning) return;
+            gameRunning = true;
+            updateGame();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            alert(`游戏结束！\n最终得分: ${score}\n漏掉气球: ${missed}`);
+        }
+        
+        function resetGame() {
+            balloons = [];
+            particles = [];
+            score = 0;
+            combo = 1;
+            missed = 0;
+            timeLeft = 60;
+            gameRunning = false;
+            clearInterval(gameTimer);
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('combo').textContent = 'x1';
+            document.getElementById('missed').textContent = '0';
+            document.getElementById('timer').textContent = '60';
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#dfe6e9');
+            gradient.addColorStop(1, '#b2bec3');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // 初始绘制
+        resetGame();
+    </script>
+</body>
+</html>

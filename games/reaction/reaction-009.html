@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点击风暴 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #f39c12 0%, #e74c3c 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 25px; text-align: center; max-width: 400px; }
+        .click-area { width: 300px; height: 200px; background: rgba(0,0,0,0.2); border-radius: 15px; margin: 20px auto; display: flex; align-items: center; justify-content: center; font-size: 5rem; cursor: pointer; user-select: none; transition: transform 0.1s; }
+        .click-area:active { transform: scale(0.95); }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 2rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #9b59b6; color: white; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>⚡ 点击风暴</h1><p>在10秒内尽可能多地点击！</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="clicks">0</div><div>点击</div></div>
+            <div class="stat"><div class="stat-value" id="time">10</div><div>秒</div></div>
+            <div class="stat"><div class="stat-value" id="cps">0</div><div>CPS</div></div>
+        </div>
+        <div class="click-area" id="area" onclick="click()">🖱️</div>
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        let clicks = 0, timeLeft = 10, timer = null, gameRunning = false, startTime = 0;
+        
+        function click() {
+            if (!gameRunning) return;
+            clicks++;
+            document.getElementById('clicks').textContent = clicks;
+            
+            const elapsed = (Date.now() - startTime) / 1000;
+            const cps = (clicks / elapsed).toFixed(1);
+            document.getElementById('cps').textContent = cps;
+        }
+        
+        function startGame() {
+            clearInterval(timer);
+            clicks = 0;
+            timeLeft = 10;
+            gameRunning = true;
+            startTime = Date.now();
+            
+            document.getElementById('clicks').textContent = '0';
+            document.getElementById('time').textContent = '10';
+            document.getElementById('cps').textContent = '0';
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    gameRunning = false;
+                    clearInterval(timer);
+                    const cps = (clicks / 10).toFixed(1);
+                    setTimeout(() => alert(`游戏结束！\n点击: ${clicks}\n速度: ${cps} CPS`), 100);
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

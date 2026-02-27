@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>词语消消乐 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            color: #2d3436;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #6c5ce7;
+            color: white;
+            border-radius: 10px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        .cell:hover { transform: scale(1.05); background: #a29bfe; }
+        .cell.selected { background: #fdcb6e; transform: scale(1.1); }
+        .cell.found { background: #00b894; opacity: 0.5; pointer-events: none; }
+        .word-input {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            font-size: 1.2rem;
+            border: 2px solid #6c5ce7;
+            border-radius: 8px;
+            text-align: center;
+        }
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #6c5ce7;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #a29bfe; }
+        .found-words {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .found-words h3 { margin-bottom: 10px; color: #6c5ce7; }
+        .found-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .found-word {
+            padding: 5px 12px;
+            background: #00b894;
+            color: white;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.3rem; font-weight: bold; color: #6c5ce7; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .timer { font-size: 2rem; font-weight: bold; color: #e74c3c; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🔤 词语消消乐</h1>
+        <p>找出所有隐藏的词语！</p>
+    </div>
+    <div class="game-box">
+        <div class="timer" id="timer">120</div>
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="found">0</div><div>已找</div></div>
+            <div class="stat"><div class="stat-value" id="total">5</div><div>总数</div></div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="word-input">
+            <input type="text" id="userWord" placeholder="输入找到的词语" maxlength="8">
+            <button onclick="checkWord()">确认</button>
+        </div>
+        <div class="found-words">
+            <h3>已找到的词语:</h3>
+            <div class="found-list" id="foundList"></div>
+        </div>
+    </div>
+    <script>
+        const words = ['苹果','香蕉','西瓜','葡萄','橙子','草莓','樱桃','芒果','柠檬','桃子',
+                       '学习','游戏','音乐','电影','阅读','运动','旅行','美食','快乐','友谊'];
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        
+        let grid = [];
+        let hiddenWords = [];
+        let foundWords = [];
+        let score = 0;
+        let timeLeft = 120;
+        let gameTimer = null;
+        
+        function initGrid() {
+            grid = Array(4).fill(null).map(() => Array(4).fill(''));
+            
+            // Place words
+            hiddenWords = [];
+            const available = [...words].sort(() => Math.random() - 0.5).slice(0, 3);
+            
+            available.forEach(word => {
+                // Try to place word
+                let placed = false;
+                for (let attempt = 0; attempt < 50 && !placed; attempt++) {
+                    const dir = Math.random() > 0.5 ? 'h' : 'v';
+                    const row = Math.floor(Math.random() * 4);
+                    const col = Math.floor(Math.random() * 4);
+                    
+                    if (canPlaceWord(word, row, col, dir)) {
+                        placeWord(word, row, col, dir);
+                        hiddenWords.push(word);
+                        placed = true;
+                    }
+                }
+            });
+            
+            // Fill empty cells
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    if (!grid[i][j]) {
+                        grid[i][j] = chars[Math.floor(Math.random() * chars.length)];
+                    }
+                }
+            }
+            
+            document.getElementById('total').textContent = hiddenWords.length;
+        }
+        
+        function canPlaceWord(word, row, col, dir) {
+            if (dir === 'h' && col + word.length > 4) return false;
+            if (dir === 'v' && row + word.length > 4) return false;
+            
+            for (let i = 0; i < word.length; i++) {
+                const r = dir === 'v' ? row + i : row;
+                const c = dir === 'h' ? col + i : col;
+                if (grid[r][c] && grid[r][c] !== word[i]) return false;
+            }
+            return true;
+        }
+        
+        function placeWord(word, row, col, dir) {
+            for (let i = 0; i < word.length; i++) {
+                const r = dir === 'v' ? row + i : row;
+                const c = dir === 'h' ? col + i : col;
+                grid[r][c] = word[i];
+            }
+        }
+        
+        function renderGrid() {
+            const gridDiv = document.getElementById('grid');
+            gridDiv.innerHTML = '';
+            
+            for (let i = 0; i < 4; i++) {
+                for (let j = 0; j < 4; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.textContent = grid[i][j];
+                    cell.dataset.row = i;
+                    cell.dataset.col = j;
+                    cell.onclick = () => selectCell(cell);
+                    gridDiv.appendChild(cell);
+                }
+            }
+        }
+        
+        let selectedCells = [];
+        let selectedWord = '';
+        
+        function selectCell(cell) {
+            if (cell.classList.contains('found')) return;
+            
+            cell.classList.toggle('selected');
+            
+            if (cell.classList.contains('selected')) {
+                selectedCells.push(cell);
+                selectedWord += cell.textContent;
+            } else {
+                const idx = selectedCells.indexOf(cell);
+                if (idx > -1) {
+                    selectedCells.splice(idx, 1);
+                    selectedWord = selectedCells.map(c => c.textContent).join('');
+                }
+            }
+            
+            document.getElementById('userWord').value = selectedWord;
+        }
+        
+        function checkWord() {
+            const word = document.getElementById('userWord').value;
+            
+            if (hiddenWords.includes(word) && !foundWords.includes(word)) {
+                foundWords.push(word);
+                score += word.length * 10;
+                
+                document.getElementById('score').textContent = score;
+                document.getElementById('found').textContent = foundWords.length;
+                
+                // Mark cells as found
+                selectedCells.forEach(cell => cell.classList.add('found'));
+                
+                // Add to found list
+                const foundList = document.getElementById('foundList');
+                const span = document.createElement('span');
+                span.className = 'found-word';
+                span.textContent = word;
+                foundList.appendChild(span);
+                
+                // Check win
+                if (foundWords.length === hiddenWords.length) {
+                    clearInterval(gameTimer);
+                    setTimeout(() => alert(`🎉 恭喜！找到所有词语！\n得分: ${score}`), 100);
+                }
+            }
+            
+            // Reset selection
+            selectedCells.forEach(cell => cell.classList.remove('selected'));
+            selectedCells = [];
+            selectedWord = '';
+            document.getElementById('userWord').value = '';
+        }
+        
+        function startGame() {
+            clearInterval(gameTimer);
+            score = 0;
+            foundWords = [];
+            timeLeft = 120;
+            selectedCells = [];
+            selectedWord = '';
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('found').textContent = '0';
+            document.getElementById('foundList').innerHTML = '';
+            document.getElementById('userWord').value = '';
+            
+            initGrid();
+            renderGrid();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(gameTimer);
+                    alert(`时间到！\n找到: ${foundWords.length}/${hiddenWords.length}\n得分: ${score}`);
+                }
+            }, 1000);
+        }
+        
+        document.getElementById('userWord').addEventListener('keypress', e => {
+            if (e.key === 'Enter') checkWord();
+        });
+        
+        startGame();
+    </script>
+</body>
+</html>

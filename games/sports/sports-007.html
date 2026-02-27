@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>射箭 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #2c3e50; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #27ae60; border-radius: 10px; cursor: crosshair; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #27ae60; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎯 射箭</h1><p>点击射箭，瞄准靶心！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="arrows">5</div><div>箭</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <div style="text-align:center;margin-top:15px;"><button onclick="newGame()">新游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let arrows = [], score = 0, arrowCount = 5;
+        const target = {x: 300, y: 200};
+        
+        function draw() {
+            ctx.fillStyle = '#87CEEB';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Grass
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+            
+            // Target stand
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(target.x - 10, target.y + 50, 20, 150);
+            
+            // Target rings
+            const rings = [
+                {r: 80, color: '#fff', points: 1},
+                {r: 60, color: '#e74c3c', points: 3},
+                {r: 40, color: '#fff', points: 5},
+                {r: 20, color: '#e74c3c', points: 10},
+                {r: 8, color: '#f1c40f', points: 20}
+            ];
+            
+            rings.forEach(ring => {
+                ctx.fillStyle = ring.color;
+                ctx.beginPath();
+                ctx.arc(target.x, target.y, ring.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+            
+            // Archer
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(50, 350, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillRect(45, 365, 10, 40);
+            
+            // Bow
+            ctx.strokeStyle = '#8B4513';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(70, 370, 30, -Math.PI/2, Math.PI/2);
+            ctx.stroke();
+            
+            // Draw arrows
+            arrows.forEach(arrow => {
+                ctx.strokeStyle = '#8B4513';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(arrow.x - 30, arrow.y);
+                ctx.lineTo(arrow.x, arrow.y);
+                ctx.stroke();
+                
+                // Arrow head
+                ctx.fillStyle = '#C0C0C0';
+                ctx.beginPath();
+                ctx.moveTo(arrow.x, arrow.y);
+                ctx.lineTo(arrow.x - 10, arrow.y - 5);
+                ctx.lineTo(arrow.x - 10, arrow.y + 5);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        canvas.addEventListener('click', e => {
+            if (arrowCount <= 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            // Calculate hit
+            const dist = Math.sqrt((x - target.x) ** 2 + (y - target.y) ** 2);
+            
+            let points = 0;
+            if (dist < 8) points = 20;
+            else if (dist < 20) points = 10;
+            else if (dist < 40) points = 5;
+            else if (dist < 60) points = 3;
+            else if (dist < 80) points = 1;
+            
+            score += points;
+            arrowCount--;
+            arrows.push({x, y});
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('arrows').textContent = arrowCount;
+            
+            if (arrowCount === 0) {
+                setTimeout(() => alert(`游戏结束！得分: ${score}`), 100);
+            }
+            
+            draw();
+        });
+        
+        function newGame() {
+            arrows = [];
+            score = 0;
+            arrowCount = 5;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('arrows').textContent = '5';
+            draw();
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

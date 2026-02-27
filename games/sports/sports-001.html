@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>篮球投篮 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .game-area {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #90EE90 60%);
+            margin: 20px 0;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .basketball-hoop {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 60px;
+        }
+
+        .backboard {
+            width: 80px;
+            height: 60px;
+            background: white;
+            border: 3px solid #333;
+            position: relative;
+        }
+
+        .rim {
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 10px;
+            background: #ff6b35;
+            border: 2px solid #c92a2a;
+            border-radius: 0 0 20px 20px;
+        }
+
+        .net {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 36px;
+            height: 30px;
+            background: repeating-linear-gradient(
+                180deg,
+                transparent,
+                transparent 3px,
+                rgba(255,255,255,0.5) 3px,
+                rgba(255,255,255,0.5) 6px
+            );
+        }
+
+        .basketball {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle at 30% 30%, #ff8c42, #ff6b35);
+            border-radius: 50%;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            cursor: grab;
+            transition: all 0.1s ease;
+            z-index: 10;
+        }
+
+        .basketball::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #8B4513;
+            transform: translateY(-50%);
+        }
+
+        .basketball::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #8B4513;
+            transform: translateX(-50%);
+        }
+
+        .basketball.shooting {
+            cursor: default;
+            animation: shootBall 1s ease-out forwards;
+        }
+
+        @keyframes shootBall {
+            0% {
+                bottom: 50px;
+                left: 50%;
+            }
+            50% {
+                bottom: 280px;
+                left: 50%;
+            }
+            100% {
+                bottom: 80px;
+                left: 50%;
+            }
+        }
+
+        .power-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            margin: 20px 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .power-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50 0%, #FFC107 50%, #F44336 100%);
+            transition: width 0.05s ease;
+        }
+
+        .power-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 100%;
+            background: #333;
+            left: 0;
+            transition: left 0.05s ease;
+        }
+
+        .aim-indicator {
+            position: absolute;
+            top: 0;
+            width: 2px;
+            height: 100%;
+            background: rgba(255, 0, 0, 0.5);
+            left: 50%;
+            pointer-events: none;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .message {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.score {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+
+        .message.miss {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏀 篮球投篮</h1>
+        <p>按住空格键蓄力，松开投篮</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">得分</div>
+                <div class="info-value" id="score">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">命中</div>
+                <div class="info-value" id="hits">0/0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">命中率</div>
+                <div class="info-value" id="accuracy">0%</div>
+            </div>
+        </div>
+
+        <div class="game-area" id="gameArea">
+            <div class="basketball-hoop">
+                <div class="backboard"></div>
+                <div class="rim"></div>
+                <div class="net"></div>
+            </div>
+            <div class="basketball" id="basketball"></div>
+            <div class="aim-indicator" id="aimIndicator"></div>
+        </div>
+
+        <div class="power-bar">
+            <div class="power-fill" id="powerFill"></div>
+            <div class="power-indicator" id="powerIndicator"></div>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <div class="buttons">
+            <button class="btn-primary" id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+            <button onclick="resetGame()">🔄 重置</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <script>
+        let score = 0;
+        let shots = 0;
+        let hits = 0;
+        let isPlaying = false;
+        let isCharging = false;
+        let power = 0;
+        let powerDirection = 1;
+        let powerInterval = null;
+        let aimPosition = 50;
+        let aimDirection = 1;
+        let aimInterval = null;
+
+        const basketball = document.getElementById('basketball');
+        const powerFill = document.getElementById('powerFill');
+        const powerIndicator = document.getElementById('powerIndicator');
+        const aimIndicator = document.getElementById('aimIndicator');
+        const message = document.getElementById('message');
+
+        function startGame() {
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            document.getElementById('startBtn').disabled = true;
+            
+            // 开始瞄准移动
+            aimInterval = setInterval(() => {
+                aimPosition += aimDirection * 2;
+                if (aimPosition >= 80 || aimPosition <= 20) {
+                    aimDirection *= -1;
+                }
+                aimIndicator.style.left = aimPosition + '%';
+            }, 50);
+
+            // 监听空格键
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+
+        function handleKeyDown(e) {
+            if (!isPlaying || isCharging || e.code !== 'Space') return;
+            
+            isCharging = true;
+            power = 0;
+            
+            // 蓄力
+            powerInterval = setInterval(() => {
+                power += powerDirection * 2;
+                if (power >= 100 || power <= 0) {
+                    powerDirection *= -1;
+                }
+                
+                powerFill.style.width = power + '%';
+                powerIndicator.style.left = power + '%';
+            }, 30);
+        }
+
+        function handleKeyUp(e) {
+            if (!isPlaying || !isCharging || e.code !== 'Space') return;
+            
+            isCharging = false;
+            clearInterval(powerInterval);
+            
+            shoot();
+        }
+
+        function shoot() {
+            shots++;
+            
+            basketball.classList.add('shooting');
+            
+            // 计算是否命中
+            const powerFactor = Math.abs(power - 70) / 70; // 最佳力度70
+            const aimFactor = Math.abs(aimPosition - 50) / 30; // 最佳瞄准50%
+            
+            const hitChance = 1 - (powerFactor * 0.5 + aimFactor * 0.5);
+            const isHit = Math.random() < hitChance;
+            
+            setTimeout(() => {
+                basketball.classList.remove('shooting');
+                
+                if (isHit) {
+                    hits++;
+                    score += 2;
+                    showMessage('score', '🎉 进球！+2分');
+                } else {
+                    showMessage('miss', '😢 没进');
+                }
+                
+                updateStats();
+                
+                // 重置力度
+                power = 0;
+                powerFill.style.width = '0%';
+                powerIndicator.style.left = '0%';
+            }, 1000);
+        }
+
+        function updateStats() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('hits').textContent = `${hits}/${shots}`;
+            
+            const accuracy = shots > 0 ? Math.round((hits / shots) * 100) : 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+        }
+
+        function showMessage(type, text) {
+            message.textContent = text;
+            message.className = `message show ${type}`;
+            
+            setTimeout(() => {
+                message.className = 'message';
+            }, 1500);
+        }
+
+        function resetGame() {
+            isPlaying = false;
+            isCharging = false;
+            score = 0;
+            shots = 0;
+            hits = 0;
+            power = 0;
+            aimPosition = 50;
+            
+            clearInterval(powerInterval);
+            clearInterval(aimInterval);
+            
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+            
+            basketball.classList.remove('shooting');
+            powerFill.style.width = '0%';
+            powerIndicator.style.left = '0%';
+            aimIndicator.style.left = '50%';
+            
+            document.getElementById('startBtn').disabled = false;
+            
+            updateStats();
+            message.className = 'message';
+        }
+
+        // 初始化
+        resetGame();
+    </script>
+</body>
+</html>

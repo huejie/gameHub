@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转盘抽奖 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { text-align: center; }
+        .wheel-container { position: relative; margin: 20px auto; }
+        canvas { border-radius: 50%; }
+        .pointer { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 2rem; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        button { padding: 15px 40px; font-size: 1.2rem; border: none; border-radius: 10px; cursor: pointer; background: #f1c40f; color: #2d3436; font-weight: bold; margin: 10px; }
+        button:hover { background: #f39c12; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
+        .result { font-size: 1.3rem; margin: 15px 0; min-height: 30px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎡 转盘抽奖</h1><p>试试你的运气！</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="coins">100</div><div>金币</div></div>
+        <div class="stat"><div class="stat-value" id="spins">0</div><div>抽奖</div></div>
+    </div>
+    <div class="game-box">
+        <div class="wheel-container">
+            <div class="pointer">▼</div>
+            <canvas id="canvas" width="300" height="300"></canvas>
+        </div>
+        <div class="result" id="result">点击按钮开始抽奖！</div>
+        <button onclick="spin()" id="spinBtn">抽奖 (10金币)</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const cx = canvas.width / 2, cy = canvas.height / 2, r = 140;
+        
+        const prizes = [
+            {text: '100金币', value: 100, color: '#e74c3c'},
+            {text: '谢谢参与', value: 0, color: '#95a5a6'},
+            {text: '20金币', value: 20, color: '#3498db'},
+            {text: '谢谢参与', value: 0, color: '#95a5a6'},
+            {text: '50金币', value: 50, color: '#2ecc71'},
+            {text: '谢谢参与', value: 0, color: '#95a5a6'},
+            {text: '200金币', value: 200, color: '#f1c40f'},
+            {text: '谢谢参与', value: 0, color: '#95a5a6'}
+        ];
+        
+        let coins = 100, spins = 0, rotation = 0, spinning = false;
+        
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const sliceAngle = (Math.PI * 2) / prizes.length;
+            
+            prizes.forEach((prize, i) => {
+                const startAngle = rotation + i * sliceAngle;
+                const endAngle = startAngle + sliceAngle;
+                
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, r, startAngle, endAngle);
+                ctx.closePath();
+                ctx.fillStyle = prize.color;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Text
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(startAngle + sliceAngle / 2);
+                ctx.textAlign = 'right';
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText(prize.text, r - 15, 4);
+                ctx.restore();
+            });
+            
+            // Center
+            ctx.fillStyle = '#2d3436';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function spin() {
+            if (spinning || coins < 10) {
+                if (coins < 10) document.getElementById('result').textContent = '金币不足！';
+                return;
+            }
+            
+            coins -= 10;
+            spins++;
+            document.getElementById('coins').textContent = coins;
+            document.getElementById('spins').textContent = spins;
+            document.getElementById('spinBtn').disabled = true;
+            spinning = true;
+            
+            const targetRotation = rotation + Math.PI * 10 + Math.random() * Math.PI * 2;
+            const duration = 4000;
+            const startTime = Date.now();
+            const startRotation = rotation;
+            
+            function animate() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                rotation = startRotation + (targetRotation - startRotation) * eased;
+                drawWheel();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                } else {
+                    spinning = false;
+                    document.getElementById('spinBtn').disabled = false;
+                    
+                    // Calculate prize
+                    const normalizedRotation = rotation % (Math.PI * 2);
+                    const sliceAngle = (Math.PI * 2) / prizes.length;
+                    const prizeIndex = Math.floor((Math.PI * 2 - normalizedRotation + Math.PI / 2) / sliceAngle) % prizes.length;
+                    const prize = prizes[prizeIndex];
+                    
+                    coins += prize.value;
+                    document.getElementById('coins').textContent = coins;
+                    document.getElementById('result').textContent = prize.value > 0 ? `🎉 恭喜获得 ${prize.text}！` : '😢 谢谢参与，再试试！';
+                }
+            }
+            
+            animate();
+        }
+        
+        drawWheel();
+    </script>
+</body>
+</html>

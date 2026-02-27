@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字华容道 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 20px; }
+        h1 { font-size: 2rem; }
+        .game-box {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            color: #2d3436;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            gap: 5px;
+            margin: 20px auto;
+            background: #2d3436;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        .tile {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+            color: white;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .tile:hover { transform: scale(1.05); }
+        .tile.empty { background: transparent; cursor: default; }
+        .tile.empty:hover { transform: none; }
+        .stats { display: flex; justify-content: space-around; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #6c5ce7; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #6c5ce7;
+            color: white;
+            font-weight: bold;
+        }
+        button:hover { background: #a29bfe; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .message { text-align: center; padding: 10px; margin: 10px 0; border-radius: 8px; }
+        .message.win { background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>🔢 数字华容道</h1>
+        <p>将数字按顺序排列</p>
+    </div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="moves">0</div><div>步数</div></div>
+            <div class="stat"><div class="stat-value" id="timer">00:00</div><div>时间</div></div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <div class="message" id="message"></div>
+        <div class="controls">
+            <button onclick="shuffleGrid()">打乱</button>
+            <button onclick="resetGrid()">重置</button>
+        </div>
+    </div>
+    <script>
+        const gridSize = 4;
+        let tiles = [];
+        let emptyIndex = 15;
+        let moves = 0;
+        let timer = null;
+        let seconds = 0;
+        let gameStarted = false;
+        
+        function initGrid() {
+            tiles = [];
+            for (let i = 1; i < gridSize * gridSize; i++) {
+                tiles.push(i);
+            }
+            tiles.push(0); // Empty tile
+            emptyIndex = tiles.length - 1;
+            renderGrid();
+        }
+        
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            
+            tiles.forEach((tile, index) => {
+                const div = document.createElement('div');
+                div.className = 'tile' + (tile === 0 ? ' empty' : '');
+                div.textContent = tile === 0 ? '' : tile;
+                div.onclick = () => moveTile(index);
+                grid.appendChild(div);
+            });
+        }
+        
+        function canMove(index) {
+            const row = Math.floor(index / gridSize);
+            const col = index % gridSize;
+            const emptyRow = Math.floor(emptyIndex / gridSize);
+            const emptyCol = emptyIndex % gridSize;
+            
+            return (Math.abs(row - emptyRow) + Math.abs(col - emptyCol)) === 1;
+        }
+        
+        function moveTile(index) {
+            if (!canMove(index)) return;
+            
+            if (!gameStarted) {
+                startTimer();
+                gameStarted = true;
+            }
+            
+            [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+            emptyIndex = index;
+            moves++;
+            
+            document.getElementById('moves').textContent = moves;
+            renderGrid();
+            
+            if (checkWin()) {
+                stopTimer();
+                document.getElementById('message').className = 'message win';
+                document.getElementById('message').textContent = `🎉 恭喜完成！用时 ${formatTime(seconds)}，步数 ${moves}`;
+            }
+        }
+        
+        function checkWin() {
+            for (let i = 0; i < tiles.length - 1; i++) {
+                if (tiles[i] !== i + 1) return false;
+            }
+            return tiles[tiles.length - 1] === 0;
+        }
+        
+        function shuffleGrid() {
+            stopTimer();
+            seconds = 0;
+            moves = 0;
+            gameStarted = false;
+            document.getElementById('moves').textContent = '0';
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            
+            // Perform random moves
+            for (let i = 0; i < 200; i++) {
+                const neighbors = getMovableNeighbors();
+                const randomNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+                [tiles[randomNeighbor], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[randomNeighbor]];
+                emptyIndex = randomNeighbor;
+            }
+            
+            renderGrid();
+        }
+        
+        function getMovableNeighbors() {
+            const neighbors = [];
+            const row = Math.floor(emptyIndex / gridSize);
+            const col = emptyIndex % gridSize;
+            
+            if (row > 0) neighbors.push(emptyIndex - gridSize);
+            if (row < gridSize - 1) neighbors.push(emptyIndex + gridSize);
+            if (col > 0) neighbors.push(emptyIndex - 1);
+            if (col < gridSize - 1) neighbors.push(emptyIndex + 1);
+            
+            return neighbors;
+        }
+        
+        function resetGrid() {
+            stopTimer();
+            seconds = 0;
+            moves = 0;
+            gameStarted = false;
+            document.getElementById('moves').textContent = '0';
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+            initGrid();
+        }
+        
+        function startTimer() {
+            timer = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').textContent = formatTime(seconds);
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            if (timer) clearInterval(timer);
+            timer = null;
+        }
+        
+        function formatTime(s) {
+            const mins = Math.floor(s / 60);
+            const secs = s % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        initGrid();
+    </script>
+</body>
+</html>

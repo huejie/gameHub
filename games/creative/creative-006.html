@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>陶艺制作 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #d35400 0%, #e67e22 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #8B4513; border-radius: 10px; background: #DEB887; }
+        .controls { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; justify-content: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #8B4513; color: white; font-weight: bold; }
+        button:hover { background: #A0522D; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+        .colors { display: flex; gap: 10px; margin: 10px 0; }
+        .color { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; }
+        .color.selected { border-color: white; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🏺 陶艺制作</h1><p>在陶轮上创作你的陶器！</p></div>
+    <div class="colors" id="colors"></div>
+    <canvas id="canvas" width="300" height="400"></canvas>
+    <div class="controls">
+        <button onclick="clearCanvas()">重新开始</button>
+        <button onclick="toggleWheel()">开关陶轮</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const palette = ['#CD853F', '#DEB887', '#D2691E', '#8B4513', '#A0522D', '#F4A460', '#B8860B'];
+        let currentColor = palette[0];
+        let wheelOn = true;
+        let wheelAngle = 0;
+        let drawing = false;
+        let points = [];
+        
+        // Color palette
+        const colorsDiv = document.getElementById('colors');
+        palette.forEach(color => {
+            const div = document.createElement('div');
+            div.className = 'color' + (color === currentColor ? ' selected' : '');
+            div.style.background = color;
+            div.onclick = () => {
+                document.querySelectorAll('.color').forEach(c => c.classList.remove('selected'));
+                div.classList.add('selected');
+                currentColor = color;
+            };
+            colorsDiv.appendChild(div);
+        });
+        
+        function draw() {
+            ctx.fillStyle = '#DEB887';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw wheel
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height - 50);
+            ctx.rotate(wheelAngle);
+            
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 100, 20, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+            
+            // Draw pottery
+            ctx.strokeStyle = currentColor;
+            ctx.lineWidth = 3;
+            
+            if (points.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 + points[0].x, points[0].y);
+                
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(canvas.width / 2 + points[i].x, points[i].y);
+                }
+                ctx.stroke();
+                
+                // Mirror
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2 - points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(canvas.width / 2 - points[i].x, points[i].y);
+                }
+                ctx.stroke();
+            }
+            
+            if (wheelOn) {
+                wheelAngle += 0.02;
+            }
+            
+            requestAnimationFrame(draw);
+        }
+        
+        canvas.addEventListener('mousedown', e => {
+            drawing = true;
+            points = [];
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width) - canvas.width / 2;
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            
+            points.push({x: Math.abs(x), y});
+        });
+        
+        canvas.addEventListener('mouseup', () => drawing = false);
+        canvas.addEventListener('mouseleave', () => drawing = false);
+        
+        function clearCanvas() {
+            points = [];
+        }
+        
+        function toggleWheel() {
+            wheelOn = !wheelOn;
+        }
+        
+        draw();
+    </script>
+</body>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>足球射门 - GameHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #27ae60 0%, #1e8449 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #fff;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .game-container {
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 600px;
+        }
+        .score-panel {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .score-item {
+            background: rgba(255,255,255,0.15);
+            padding: 12px 20px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+            min-width: 80px;
+        }
+        .score-item .label {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        .score-item .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .field {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(180deg, 
+                #5dade2 0%, 
+                #3498db 30%,
+                #27ae60 30%,
+                #27ae60 100%);
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        .grass-pattern {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 70%;
+            background: repeating-linear-gradient(
+                90deg,
+                #27ae60 0px,
+                #27ae60 40px,
+                #229954 40px,
+                #229954 80px
+            );
+        }
+        .goal {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 100px;
+            border: 8px solid #fff;
+            border-bottom: none;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px 5px 0 0;
+        }
+        .goal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    90deg,
+                    transparent 0px,
+                    transparent 18px,
+                    rgba(255,255,255,0.3) 18px,
+                    rgba(255,255,255,0.3) 20px
+                ),
+                repeating-linear-gradient(
+                    0deg,
+                    transparent 0px,
+                    transparent 18px,
+                    rgba(255,255,255,0.3) 18px,
+                    rgba(255,255,255,0.3) 20px
+                );
+        }
+        .goalkeeper {
+            position: absolute;
+            top: 130px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 80px;
+            background: linear-gradient(180deg, #f39c12 0%, #e67e22 100%);
+            border-radius: 10px 10px 5px 5px;
+            transition: left 0.3s ease-out;
+        }
+        .goalkeeper::before {
+            content: '🧤';
+            position: absolute;
+            top: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+        }
+        .goalkeeper::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 5px;
+            right: 5px;
+            height: 30px;
+            background: #2c3e50;
+            border-radius: 3px;
+        }
+        .ball {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 40px;
+            font-size: 35px;
+            line-height: 40px;
+            text-align: center;
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 10;
+        }
+        .ball.shooting {
+            transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .aim-line {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            width: 3px;
+            height: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.8), transparent);
+            transform-origin: bottom center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .power-bar {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+            overflow: hidden;
+            border: 2px solid #fff;
+        }
+        .power-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2ecc71, #f1c40f, #e74c3c);
+            transition: width 0.05s;
+        }
+        .target-zone {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 3px dashed #ffd700;
+            border-radius: 50%;
+            opacity: 0;
+            pointer-events: none;
+            animation: targetPulse 1s infinite;
+        }
+        @keyframes targetPulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+        }
+        .message {
+            color: #fff;
+            font-size: 1.2rem;
+            text-align: center;
+            margin: 15px 0;
+            min-height: 30px;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #fff, #ecf0f1);
+            color: #27ae60;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(255,255,255,0.3);
+        }
+        .result-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(255,255,255,0.8);
+            pointer-events: none;
+            animation: popIn 0.5s ease-out;
+            z-index: 100;
+        }
+        @keyframes popIn {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.3); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .result-popup.goal { color: #2ecc71; }
+        .result-popup.save { color: #e74c3c; }
+        @media (max-width: 500px) {
+            .field {
+                height: 350px;
+            }
+            .goal {
+                width: 150px;
+                height: 75px;
+                top: 60px;
+            }
+            .goalkeeper {
+                top: 100px;
+                width: 50px;
+                height: 65px;
+            }
+            .ball {
+                width: 30px;
+                height: 30px;
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚽ 足球射门 ⚽</h1>
+        <a href="../../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+    
+    <div class="game-container">
+        <div class="score-panel">
+            <div class="score-item">
+                <div class="label">进球</div>
+                <div class="value" id="goals" style="color: #2ecc71;">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">射门</div>
+                <div class="value" id="shots">0</div>
+            </div>
+            <div class="score-item">
+                <div class="label">命中率</div>
+                <div class="value" id="accuracy">0%</div>
+            </div>
+            <div class="score-item">
+                <div class="label">轮次</div>
+                <div class="value" id="round">1/10</div>
+            </div>
+        </div>
+        
+        <div class="message" id="message">点击并拖动来瞄准，松开射门！</div>
+        
+        <div class="field" id="field">
+            <div class="grass-pattern"></div>
+            <div class="goal">
+                <div class="target-zone" id="target"></div>
+            </div>
+            <div class="goalkeeper" id="goalkeeper"></div>
+            <div class="ball" id="ball">⚽</div>
+            <div class="aim-line" id="aim-line"></div>
+            <div class="power-bar">
+                <div class="power-fill" id="power-fill"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="start-btn" onclick="startGame()">开始游戏</button>
+            <button class="btn btn-primary" id="next-btn" onclick="nextRound()" style="display:none;">下一轮</button>
+        </div>
+    </div>
+
+    <script>
+        const field = document.getElementById('field');
+        const ball = document.getElementById('ball');
+        const goalkeeper = document.getElementById('goalkeeper');
+        const aimLine = document.getElementById('aim-line');
+        const powerFill = document.getElementById('power-fill');
+        const target = document.getElementById('target');
+        
+        let goals = 0;
+        let shots = 0;
+        let currentRound = 1;
+        let maxRounds = 10;
+        let gameActive = false;
+        let isDragging = false;
+        let startX, startY;
+        let power = 0;
+        let powerInterval;
+        
+        // 守门员位置
+        const keeperPositions = [-70, -35, 0, 35, 70];
+        
+        field.addEventListener('mousedown', startDrag);
+        field.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            startDrag({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+        
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                drag({ clientX: touch.clientX, clientY: touch.clientY });
+            }
+        });
+        
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+        
+        function startDrag(e) {
+            if (!gameActive) return;
+            
+            const rect = field.getBoundingClientRect();
+            startX = e.clientX - rect.left;
+            startY = e.clientY - rect.top;
+            
+            isDragging = true;
+            aimLine.style.opacity = '1';
+            
+            // 开始蓄力
+            power = 0;
+            powerInterval = setInterval(() => {
+                power = Math.min(power + 2, 100);
+                powerFill.style.width = `${power}%`;
+            }, 30);
+        }
+        
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const rect = field.getBoundingClientRect();
+            const currentX = e.clientX - rect.left;
+            const currentY = e.clientY - rect.top;
+            
+            const deltaX = startX - currentX;
+            const deltaY = startY - currentY;
+            
+            const angle = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+            const length = Math.min(Math.sqrt(deltaX * deltaX + deltaY * deltaY), 150);
+            
+            aimLine.style.transform = `rotate(${angle - 90}deg)`;
+            aimLine.style.height = `${length}px`;
+        }
+        
+        function endDrag() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            clearInterval(powerInterval);
+            aimLine.style.opacity = '0';
+            
+            if (power > 20) {
+                shoot();
+            } else {
+                powerFill.style.width = '0%';
+                updateMessage('力度不够！请长按蓄力');
+            }
+        }
+        
+        function shoot() {
+            gameActive = false;
+            shots++;
+            
+            const aimAngle = parseFloat(aimLine.style.transform.replace('rotate(', '').replace('deg)', '')) || 0;
+            const radians = (aimAngle + 90) * (Math.PI / 180);
+            
+            // 计算落点
+            const distance = 300 * (power / 100);
+            const targetX = 300 + Math.sin(radians) * distance;
+            const targetY = 130 - Math.cos(radians) * distance * 0.5;
+            
+            // 显示目标
+            target.style.left = `${targetX - 300}px`;
+            target.style.top = `${targetY - 80}px`;
+            target.style.opacity = '1';
+            
+            // 移动球
+            ball.style.left = `${targetX}px`;
+            ball.style.bottom = `${400 - targetY}px`;
+            ball.classList.add('shooting');
+            
+            // 守门员扑救
+            setTimeout(() => {
+                const keeperTarget = Math.max(-70, Math.min(70, targetX - 300));
+                goalkeeper.style.left = `calc(50% + ${keeperTarget}px)`;
+            }, 100);
+            
+            // 判断结果
+            setTimeout(() => {
+                const keeperPos = parseFloat(goalkeeper.style.left.replace('calc(50% + ', '').replace('px)', '')) || 0;
+                const ballPos = targetX - 300;
+                const distance = Math.abs(keeperPos - ballPos);
+                
+                // 球门范围 -100 到 100
+                const isInGoal = Math.abs(ballPos) < 90;
+                
+                let isGoal = false;
+                
+                if (isInGoal) {
+                    // 守门员扑救范围 40
+                    if (distance > 40) {
+                        isGoal = true;
+                    }
+                }
+                
+                showResult(isGoal, isInGoal);
+            }, 500);
+        }
+        
+        function showResult(isGoal, isInGoal) {
+            const popup = document.createElement('div');
+            popup.className = 'result-popup';
+            
+            if (isGoal) {
+                goals++;
+                popup.textContent = '⚽ 进球！';
+                popup.classList.add('goal');
+            } else if (!isInGoal) {
+                popup.textContent = '❌ 射偏了！';
+                popup.classList.add('save');
+            } else {
+                popup.textContent = '🧤 被扑出！';
+                popup.classList.add('save');
+            }
+            
+            field.appendChild(popup);
+            
+            updateDisplay();
+            
+            setTimeout(() => {
+                popup.remove();
+                
+                if (currentRound < maxRounds) {
+                    document.getElementById('next-btn').style.display = 'inline-block';
+                    updateMessage('点击"下一轮"继续');
+                } else {
+                    endGame();
+                }
+            }, 1500);
+        }
+        
+        function nextRound() {
+            currentRound++;
+            resetRound();
+            
+            gameActive = true;
+            document.getElementById('next-btn').style.display = 'none';
+            updateMessage('瞄准并射门！');
+            updateDisplay();
+        }
+        
+        function resetRound() {
+            ball.style.left = '50%';
+            ball.style.bottom = '50px';
+            ball.classList.remove('shooting');
+            
+            goalkeeper.style.left = '50%';
+            target.style.opacity = '0';
+            powerFill.style.width = '0%';
+            
+            // 随机守门员初始位置
+            const randomPos = keeperPositions[Math.floor(Math.random() * keeperPositions.length)];
+            setTimeout(() => {
+                goalkeeper.style.left = `calc(50% + ${randomPos}px)`;
+            }, 100);
+        }
+        
+        function updateDisplay() {
+            document.getElementById('goals').textContent = goals;
+            document.getElementById('shots').textContent = shots;
+            document.getElementById('accuracy').textContent = 
+                shots > 0 ? `${Math.round((goals / shots) * 100)}%` : '0%';
+            document.getElementById('round').textContent = `${currentRound}/${maxRounds}`;
+        }
+        
+        function updateMessage(msg) {
+            document.getElementById('message').textContent = msg;
+        }
+        
+        function startGame() {
+            goals = 0;
+            shots = 0;
+            currentRound = 1;
+            gameActive = true;
+            
+            resetRound();
+            updateDisplay();
+            updateMessage('瞄准并射门！');
+            
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+        }
+        
+        function endGame() {
+            gameActive = false;
+            
+            let result;
+            const accuracy = shots > 0 ? Math.round((goals / shots) * 100) : 0;
+            
+            if (accuracy >= 90) result = '🏆 神射手！';
+            else if (accuracy >= 70) result = '⭐ 优秀！';
+            else if (accuracy >= 50) result = '👍 不错！';
+            else result = '💪 继续努力！';
+            
+            updateMessage(`${result} 进球: ${goals}/${shots} (${accuracy}%)`);
+            
+            document.getElementById('start-btn').textContent = '再来一局';
+            document.getElementById('start-btn').style.display = 'inline-block';
+            document.getElementById('next-btn').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

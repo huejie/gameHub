@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>找不同 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        .game-box { background: rgba(255,255,255,0.1); border-radius: 15px; padding: 20px; text-align: center; }
+        .grids { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin: 20px 0; }
+        .grid { display: grid; grid-template-columns: repeat(5, 40px); gap: 3px; }
+        .cell { width: 40px; height: 40px; border-radius: 5px; cursor: pointer; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; }
+        .cell.found { outline: 3px solid #2ecc71; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #e74c3c; color: white; font-weight: bold; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🔍 找不同</h1><p>找出两个网格中的不同之处</p></div>
+    <div class="game-box">
+        <div class="stats">
+            <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+            <div class="stat"><div class="stat-value" id="level">1</div><div>关卡</div></div>
+        </div>
+        <div class="grids">
+            <div class="grid" id="grid1"></div>
+            <div class="grid" id="grid2"></div>
+        </div>
+        <button onclick="newGame()">新游戏</button>
+    </div>
+    <script>
+        const emojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑'];
+        const SIZE = 5;
+        let grid1 = [], grid2 = [], differences = [], found = [], score = 0, level = 1;
+        
+        function generate() {
+            grid1 = [];
+            grid2 = [];
+            differences = [];
+            found = [];
+            
+            const numDiff = 2 + level;
+            
+            for (let i = 0; i < SIZE; i++) {
+                grid1[i] = [];
+                grid2[i] = [];
+                for (let j = 0; j < SIZE; j++) {
+                    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+                    grid1[i][j] = emoji;
+                    grid2[i][j] = emoji;
+                }
+            }
+            
+            for (let k = 0; k < numDiff; k++) {
+                let i, j;
+                do {
+                    i = Math.floor(Math.random() * SIZE);
+                    j = Math.floor(Math.random() * SIZE);
+                } while (differences.some(d => d.i === i && d.j === j));
+                
+                const newEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+                grid2[i][j] = newEmoji;
+                differences.push({i, j});
+            }
+            
+            render();
+        }
+        
+        function render() {
+            const el1 = document.getElementById('grid1');
+            const el2 = document.getElementById('grid2');
+            el1.innerHTML = '';
+            el2.innerHTML = '';
+            
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell1 = document.createElement('div');
+                    cell1.className = 'cell' + (found.some(f => f.i === i && f.j === j) ? ' found' : '');
+                    cell1.textContent = grid1[i][j];
+                    cell1.onclick = () => check(i, j);
+                    el1.appendChild(cell1);
+                    
+                    const cell2 = document.createElement('div');
+                    cell2.className = 'cell' + (found.some(f => f.i === i && f.j === j) ? ' found' : '');
+                    cell2.textContent = grid2[i][j];
+                    cell2.onclick = () => check(i, j);
+                    el2.appendChild(cell2);
+                }
+            }
+        }
+        
+        function check(i, j) {
+            if (found.some(f => f.i === i && f.j === j)) return;
+            
+            if (differences.some(d => d.i === i && d.j === j)) {
+                found.push({i, j});
+                score += 10 * level;
+                document.getElementById('score').textContent = score;
+                render();
+                
+                if (found.length === differences.length) {
+                    level++;
+                    document.getElementById('level').textContent = level;
+                    setTimeout(generate, 1000);
+                }
+            }
+        }
+        
+        function newGame() {
+            score = 0;
+            level = 1;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('level').textContent = '1';
+            generate();
+        }
+        
+        newGame();
+    </script>
+</body>
+</html>

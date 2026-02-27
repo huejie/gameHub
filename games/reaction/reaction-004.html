@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节奏打击 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #fff; border-radius: 10px; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; }
+        .controls { text-align: center; }
+        button { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; background: #f1c40f; color: #2d3436; font-weight: bold; margin: 5px; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🎵 节奏打击</h1><p>按D F J K键击中下落的音符</p></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="combo">0</div><div>连击</div></div>
+        <div class="stat"><div class="stat-value" id="accuracy">0%</div><div>准确</div></div>
+    </div>
+    <canvas id="canvas" width="400" height="500"></canvas>
+    <div class="controls"><button onclick="newGame()">开始游戏</button></div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const lanes = [
+            {key: 'KeyD', x: 50, color: '#e74c3c', label: 'D'},
+            {key: 'KeyF', x: 130, color: '#3498db', label: 'F'},
+            {key: 'KeyJ', x: 210, color: '#2ecc71', label: 'J'},
+            {key: 'KeyK', x: 290, color: '#f1c40f', label: 'K'}
+        ];
+        
+        let notes = [], score = 0, combo = 0, maxCombo = 0, hits = 0, total = 0;
+        let gameRunning = false, spawnTimer = null;
+        
+        function newGame() {
+            notes = [];
+            score = 0;
+            combo = 0;
+            maxCombo = 0;
+            hits = 0;
+            total = 0;
+            gameRunning = true;
+            document.getElementById('score').textContent = '0';
+            document.getElementById('combo').textContent = '0';
+            document.getElementById('accuracy').textContent = '0%';
+            
+            update();
+            
+            spawnTimer = setInterval(() => {
+                if (gameRunning) {
+                    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+                    notes.push({x: lane.x, y: -20, lane: lane, hit: false});
+                }
+            }, 500);
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw lanes
+            lanes.forEach(lane => {
+                ctx.fillStyle = lane.color + '33';
+                ctx.fillRect(lane.x - 30, 0, 60, canvas.height);
+                
+                // Hit zone
+                ctx.fillStyle = lane.color;
+                ctx.fillRect(lane.x - 30, 420, 60, 10);
+                
+                // Key label
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(lane.label, lane.x, 470);
+            });
+            
+            // Update notes
+            notes.forEach(note => {
+                note.y += 5;
+            });
+            
+            // Remove missed notes
+            notes = notes.filter(note => {
+                if (note.y > 450 && !note.hit) {
+                    combo = 0;
+                    document.getElementById('combo').textContent = combo;
+                    return false;
+                }
+                return note.y < 500;
+            });
+            
+            // Draw notes
+            notes.forEach(note => {
+                if (!note.hit) {
+                    ctx.fillStyle = note.lane.color;
+                    ctx.beginPath();
+                    ctx.arc(note.x, note.y, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+            });
+            
+            document.getElementById('score').textContent = score;
+            const accuracy = total > 0 ? Math.round((hits / total) * 100) : 0;
+            document.getElementById('accuracy').textContent = accuracy + '%';
+            
+            requestAnimationFrame(update);
+        }
+        
+        document.addEventListener('keydown', e => {
+            if (!gameRunning) return;
+            
+            const lane = lanes.find(l => l.key === e.code);
+            if (!lane) return;
+            
+            // Find closest note in this lane
+            let closestNote = null;
+            let closestDist = Infinity;
+            
+            notes.forEach(note => {
+                if (note.lane === lane && !note.hit) {
+                    const dist = Math.abs(note.y - 425);
+                    if (dist < closestDist && dist < 50) {
+                        closestDist = dist;
+                        closestNote = note;
+                    }
+                }
+            });
+            
+            total++;
+            
+            if (closestNote) {
+                closestNote.hit = true;
+                hits++;
+                combo++;
+                maxCombo = Math.max(maxCombo, combo);
+                
+                const points = closestDist < 15 ? 100 : closestDist < 30 ? 50 : 25;
+                score += points * (1 + Math.floor(combo / 10));
+                
+                document.getElementById('combo').textContent = combo;
+            } else {
+                combo = 0;
+                document.getElementById('combo').textContent = combo;
+            }
+        });
+        
+        // Initial render
+        ctx.fillStyle = '#1a1a2e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        lanes.forEach(lane => {
+            ctx.fillStyle = lane.color + '33';
+            ctx.fillRect(lane.x - 30, 0, 60, canvas.height);
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(lane.label, lane.x, 470);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>收集宝石 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: white;
+            padding: 20px;
+        }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #f1c40f; border-radius: 10px; display: block; cursor: none; }
+        .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #f1c40f;
+            color: #2d3436;
+            font-weight: bold;
+        }
+        button:hover { background: #f39c12; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header">
+        <h1>💎 收集宝石</h1>
+        <p>移动收集宝石，躲避炸弹！</p>
+    </div>
+    <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="time">60</div><div>时间</div></div>
+        <div class="stat"><div class="stat-value" id="combo">x1</div><div>连击</div></div>
+    </div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="controls">
+        <button onclick="startGame()">开始游戏</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let player, gems, bombs, particles;
+        let score = 0, timeLeft = 60, combo = 1;
+        let gameRunning = false, gameTimer = null;
+        let lastCollectTime = 0;
+        
+        const gemColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6'];
+        
+        function init() {
+            player = {x: canvas.width/2, y: canvas.height/2, size: 20};
+            gems = [];
+            bombs = [];
+            particles = [];
+            score = 0; combo = 1;
+            
+            for (let i = 0; i < 5; i++) spawnGem();
+            for (let i = 0; i < 2; i++) spawnBomb();
+        }
+        
+        function spawnGem() {
+            gems.push({
+                x: 30 + Math.random() * (canvas.width - 60),
+                y: 30 + Math.random() * (canvas.height - 60),
+                size: 15,
+                color: gemColors[Math.floor(Math.random() * gemColors.length)],
+                points: [10, 15, 20, 25, 30][Math.floor(Math.random() * 5)],
+                rotation: Math.random() * Math.PI * 2
+            });
+        }
+        
+        function spawnBomb() {
+            bombs.push({
+                x: 30 + Math.random() * (canvas.width - 60),
+                y: 30 + Math.random() * (canvas.height - 60),
+                size: 18
+            });
+        }
+        
+        function createParticles(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x, y, color,
+                    dx: (Math.random() - 0.5) * 6,
+                    dy: (Math.random() - 0.5) * 6,
+                    life: 1
+                });
+            }
+        }
+        
+        function update() {
+            if (!gameRunning) return;
+            
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            // Update gems
+            gems.forEach(g => g.rotation += 0.02);
+            
+            // Draw gems
+            gems.forEach(g => {
+                ctx.save();
+                ctx.translate(g.x, g.y);
+                ctx.rotate(g.rotation);
+                ctx.fillStyle = g.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -g.size);
+                ctx.lineTo(g.size * 0.6, 0);
+                ctx.lineTo(0, g.size);
+                ctx.lineTo(-g.size * 0.6, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            });
+            
+            // Draw bombs
+            bombs.forEach(b => {
+                ctx.fillStyle = '#2d3436';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(b.x - 2, b.y - b.size - 8, 4, 8);
+            });
+            
+            // Draw player
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(player.x - 5, player.y - 5, 4, 0, Math.PI * 2);
+            ctx.arc(player.x + 5, player.y - 5, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Check gem collision
+            for (let i = gems.length - 1; i >= 0; i--) {
+                const dx = player.x - gems[i].x;
+                const dy = player.y - gems[i].y;
+                if (Math.sqrt(dx*dx + dy*dy) < player.size + gems[i].size) {
+                    createParticles(gems[i].x, gems[i].y, gems[i].color);
+                    
+                    if (Date.now() - lastCollectTime < 1000) {
+                        combo = Math.min(combo + 1, 10);
+                    } else {
+                        combo = 1;
+                    }
+                    lastCollectTime = Date.now();
+                    
+                    score += gems[i].points * combo;
+                    gems.splice(i, 1);
+                    spawnGem();
+                    
+                    document.getElementById('score').textContent = score;
+                    document.getElementById('combo').textContent = 'x' + combo;
+                }
+            }
+            
+            // Check bomb collision
+            for (let bomb of bombs) {
+                const dx = player.x - bomb.x;
+                const dy = player.y - bomb.y;
+                if (Math.sqrt(dx*dx + dy*dy) < player.size + bomb.size) {
+                    combo = 1;
+                    score = Math.max(0, score - 50);
+                    document.getElementById('combo').textContent = 'x1';
+                    document.getElementById('score').textContent = score;
+                    createParticles(bomb.x, bomb.y, '#e74c3c');
+                    bomb.x = 30 + Math.random() * (canvas.width - 60);
+                    bomb.y = 30 + Math.random() * (canvas.height - 60);
+                }
+            }
+            
+            // Update particles
+            particles = particles.filter(p => p.life > 0);
+            particles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+                p.life -= 0.05;
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 5, 5);
+                ctx.globalAlpha = 1;
+            });
+            
+            // Spawn more bombs over time
+            if (Math.random() < 0.005 && bombs.length < 5) spawnBomb();
+            
+            requestAnimationFrame(update);
+        }
+        
+        canvas.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            player.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            player.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+        });
+        
+        function startGame() {
+            clearInterval(gameTimer);
+            init();
+            timeLeft = 60;
+            gameRunning = true;
+            
+            document.getElementById('score').textContent = '0';
+            document.getElementById('time').textContent = '60';
+            document.getElementById('combo').textContent = 'x1';
+            
+            update();
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time').textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    gameRunning = false;
+                    clearInterval(gameTimer);
+                    alert(`游戏结束！得分: ${score}`);
+                }
+            }, 1000);
+        }
+        
+        init();
+    </script>
+</body>
+</html>

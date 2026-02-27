@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐作曲 - GameHub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #e94560;
+            font-size: 2rem;
+            text-shadow: 0 0 20px rgba(233,69,96,0.5);
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+        .back-link:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .game-container {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+        }
+        .controls-top {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .btn-primary {
+            background: linear-gradient(145deg, #e94560, #c73e54);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(233,69,96,0.4);
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        .piano-container {
+            background: linear-gradient(180deg, #2c2c2c 0%, #1a1a1a 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .piano-label {
+            color: #fff;
+            margin-bottom: 10px;
+            text-align: center;
+            opacity: 0.8;
+        }
+        .piano {
+            display: flex;
+            justify-content: center;
+            position: relative;
+            height: 180px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-radius: 0 0 10px 10px;
+            padding: 10px;
+        }
+        .white-key {
+            width: 50px;
+            height: 160px;
+            background: linear-gradient(180deg, #fff 0%, #e0e0e0 100%);
+            border: 1px solid #999;
+            border-radius: 0 0 5px 5px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.1s;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 10px;
+            font-size: 12px;
+            color: #666;
+        }
+        .white-key:hover {
+            background: linear-gradient(180deg, #f5f5f5 0%, #d5d5d5 100%);
+        }
+        .white-key:active, .white-key.active {
+            background: linear-gradient(180deg, #e0e0e0 0%, #ccc 100%);
+            transform: translateY(2px);
+        }
+        .black-key {
+            width: 30px;
+            height: 100px;
+            background: linear-gradient(180deg, #333 0%, #000 100%);
+            border-radius: 0 0 3px 3px;
+            position: absolute;
+            top: 10px;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.1s;
+        }
+        .black-key:hover {
+            background: linear-gradient(180deg, #444 0%, #111 100%);
+        }
+        .black-key:active, .black-key.active {
+            background: linear-gradient(180deg, #222 0%, #000 100%);
+            height: 95px;
+        }
+        .sequencer {
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .sequencer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+        .sequencer-grid {
+            display: grid;
+            grid-template-columns: 60px repeat(16, 1fr);
+            gap: 2px;
+            overflow-x: auto;
+        }
+        .note-label {
+            background: rgba(255,255,255,0.1);
+            padding: 8px;
+            text-align: center;
+            color: #fff;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        .note-label.black { background: rgba(0,0,0,0.3); }
+        .cell {
+            aspect-ratio: 1;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 25px;
+        }
+        .cell:hover {
+            background: rgba(255,255,255,0.2);
+        }
+        .cell.active {
+            background: linear-gradient(145deg, #e94560, #c73e54);
+            box-shadow: 0 0 10px rgba(233,69,96,0.5);
+        }
+        .cell.playing {
+            background: #4ecdc4 !important;
+            box-shadow: 0 0 15px rgba(78,205,196,0.7);
+        }
+        .tempo-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+        }
+        .tempo-slider {
+            width: 100px;
+            cursor: pointer;
+        }
+        .message {
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            margin: 10px 0;
+            min-height: 25px;
+        }
+        .keyboard-hint {
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        @media (max-width: 700px) {
+            .white-key {
+                width: 35px;
+                height: 130px;
+            }
+            .black-key {
+                width: 22px;
+                height: 80px;
+            }
+            .cell {
+                min-width: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎹 音乐作曲 🎹</h1>
+        <a href="../../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+    
+    <div class="game-container">
+        <div class="controls-top">
+            <button class="btn btn-primary" id="play-btn" onclick="togglePlay()">▶ 播放</button>
+            <button class="btn btn-secondary" onclick="clearAll()">🗑️ 清空</button>
+            <button class="btn btn-secondary" onclick="randomMelody()">🎲 随机</button>
+        </div>
+        
+        <div class="message" id="message">点击琴格创作音乐，或使用键盘 A-K 弹奏</div>
+        
+        <div class="piano-container">
+            <div class="piano-label">虚拟钢琴（点击或使用键盘）</div>
+            <div class="piano" id="piano"></div>
+        </div>
+        
+        <div class="sequencer">
+            <div class="sequencer-header">
+                <span>🎵 音序器</span>
+                <div class="tempo-control">
+                    <span>速度:</span>
+                    <input type="range" class="tempo-slider" id="tempo" min="60" max="180" value="120" onchange="updateTempo()">
+                    <span id="tempo-value">120 BPM</span>
+                </div>
+            </div>
+            <div class="sequencer-grid" id="sequencer-grid"></div>
+        </div>
+        
+        <div class="keyboard-hint">
+            键盘快捷键: A(Do) S(Re) D(Mi) F(Fa) G(Sol) H(La) J(Si) K(Do') | W/E/T/Y/U(黑键)
+        </div>
+    </div>
+
+    <script>
+        // 音符频率
+        const notes = [
+            { name: 'C5', freq: 523.25, label: 'Do\'', key: 'k', type: 'white' },
+            { name: 'B4', freq: 493.88, label: 'Si', key: 'j', type: 'white' },
+            { name: 'As4', freq: 466.16, label: 'La#', key: 'u', type: 'black' },
+            { name: 'A4', freq: 440.00, label: 'La', key: 'h', type: 'white' },
+            { name: 'Gs4', freq: 415.30, label: 'Sol#', key: 'y', type: 'black' },
+            { name: 'G4', freq: 392.00, label: 'Sol', key: 'g', type: 'white' },
+            { name: 'Fs4', freq: 369.99, label: 'Fa#', key: 't', type: 'black' },
+            { name: 'F4', freq: 349.23, label: 'Fa', key: 'f', type: 'white' },
+            { name: 'E4', freq: 329.63, label: 'Mi', key: 'd', type: 'white' },
+            { name: 'Ds4', freq: 311.13, label: 'Re#', key: 'e', type: 'black' },
+            { name: 'D4', freq: 293.66, label: 'Re', key: 's', type: 'white' },
+            { name: 'Cs4', freq: 277.18, label: 'Do#', key: 'w', type: 'black' },
+            { name: 'C4', freq: 261.63, label: 'Do', key: 'a', type: 'white' }
+        ];
+        
+        const whiteNotes = notes.filter(n => n.type === 'white');
+        const blackNotes = notes.filter(n => n.type === 'black');
+        
+        let audioCtx;
+        let isPlaying = false;
+        let currentStep = 0;
+        let playInterval;
+        let tempo = 120;
+        
+        // 音序器数据 (13行 x 16列)
+        let sequencerData = Array(13).fill(null).map(() => Array(16).fill(false));
+        
+        // 初始化音频上下文
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 播放音符
+        function playNote(frequency, duration = 0.3) {
+            initAudio();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.value = frequency;
+            
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            
+            oscillator.start(audioCtx.currentTime);
+            oscillator.stop(audioCtx.currentTime + duration);
+        }
+        
+        // 创建钢琴
+        function createPiano() {
+            const piano = document.getElementById('piano');
+            piano.innerHTML = '';
+            
+            // 白键位置
+            const whiteKeyPositions = [0, 50, 100, 150, 200, 250, 300, 350];
+            
+            whiteNotes.forEach((note, index) => {
+                const key = document.createElement('div');
+                key.className = 'white-key';
+                key.dataset.note = note.name;
+                key.dataset.freq = note.freq;
+                key.innerHTML = note.label;
+                key.onclick = () => {
+                    playNote(note.freq);
+                    key.classList.add('active');
+                    setTimeout(() => key.classList.remove('active'), 150);
+                };
+                piano.appendChild(key);
+            });
+            
+            // 黑键位置 (相对于钢琴左边缘)
+            const blackKeyPositions = [
+                { note: 'Ds4', left: 35 },
+                { note: 'Cs4', left: 85 },
+                { note: 'Fs4', left: 185 },
+                { note: 'Gs4', left: 235 },
+                { note: 'As4', left: 285 }
+            ];
+            
+            blackKeyPositions.forEach(pos => {
+                const note = notes.find(n => n.name === pos.note);
+                const key = document.createElement('div');
+                key.className = 'black-key';
+                key.dataset.note = note.name;
+                key.dataset.freq = note.freq;
+                key.style.left = `${pos.left + 10}px`;
+                key.onclick = (e) => {
+                    e.stopPropagation();
+                    playNote(note.freq);
+                    key.classList.add('active');
+                    setTimeout(() => key.classList.remove('active'), 150);
+                };
+                piano.appendChild(key);
+            });
+        }
+        
+        // 创建音序器
+        function createSequencer() {
+            const grid = document.getElementById('sequencer-grid');
+            grid.innerHTML = '';
+            
+            notes.forEach((note, rowIndex) => {
+                // 音符标签
+                const label = document.createElement('div');
+                label.className = `note-label ${note.type === 'black' ? 'black' : ''}`;
+                label.textContent = note.label;
+                grid.appendChild(label);
+                
+                // 16个格子
+                for (let col = 0; col < 16; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = rowIndex;
+                    cell.dataset.col = col;
+                    
+                    cell.onclick = () => {
+                        sequencerData[rowIndex][col] = !sequencerData[rowIndex][col];
+                        cell.classList.toggle('active');
+                        
+                        if (sequencerData[rowIndex][col]) {
+                            playNote(note.freq, 0.1);
+                        }
+                    };
+                    
+                    grid.appendChild(cell);
+                }
+            });
+        }
+        
+        // 播放/停止
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+        
+        function startPlay() {
+            initAudio();
+            isPlaying = true;
+            currentStep = 0;
+            
+            document.getElementById('play-btn').textContent = '⏹ 停止';
+            document.getElementById('message').textContent = '正在播放...';
+            
+            const stepDuration = 60000 / tempo / 4; // 16分音符
+            
+            playInterval = setInterval(() => {
+                // 清除上一步的高亮
+                document.querySelectorAll('.cell.playing').forEach(c => c.classList.remove('playing'));
+                
+                // 高亮当前列
+                document.querySelectorAll(`.cell[data-col="${currentStep}"]`).forEach(c => {
+                    c.classList.add('playing');
+                });
+                
+                // 播放当前步的音符
+                notes.forEach((note, rowIndex) => {
+                    if (sequencerData[rowIndex][currentStep]) {
+                        playNote(note.freq, 0.15);
+                    }
+                });
+                
+                currentStep = (currentStep + 1) % 16;
+            }, stepDuration);
+        }
+        
+        function stopPlay() {
+            isPlaying = false;
+            clearInterval(playInterval);
+            
+            document.querySelectorAll('.cell.playing').forEach(c => c.classList.remove('playing'));
+            document.getElementById('play-btn').textContent = '▶ 播放';
+            document.getElementById('message').textContent = '点击琴格创作音乐';
+        }
+        
+        // 清空
+        function clearAll() {
+            sequencerData = Array(13).fill(null).map(() => Array(16).fill(false));
+            document.querySelectorAll('.cell.active').forEach(c => c.classList.remove('active'));
+            if (isPlaying) stopPlay();
+        }
+        
+        // 随机旋律
+        function randomMelody() {
+            clearAll();
+            
+            // 生成简单的随机旋律
+            for (let col = 0; col < 16; col++) {
+                if (Math.random() > 0.3) { // 70%概率有音符
+                    const row = Math.floor(Math.random() * notes.length);
+                    sequencerData[row][col] = true;
+                    document.querySelector(`.cell[data-row="${row}"][data-col="${col}"]`).classList.add('active');
+                }
+            }
+        }
+        
+        // 更新速度
+        function updateTempo() {
+            tempo = parseInt(document.getElementById('tempo').value);
+            document.getElementById('tempo-value').textContent = `${tempo} BPM`;
+            
+            if (isPlaying) {
+                stopPlay();
+                startPlay();
+            }
+        }
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            const note = notes.find(n => n.key === e.key.toLowerCase());
+            if (note) {
+                e.preventDefault();
+                playNote(note.freq);
+                
+                // 高亮琴键
+                const keyEl = document.querySelector(`.piano [data-note="${note.name}"]`);
+                if (keyEl) {
+                    keyEl.classList.add('active');
+                    setTimeout(() => keyEl.classList.remove('active'), 150);
+                }
+            }
+            
+            // 空格播放/停止
+            if (e.code === 'Space') {
+                e.preventDefault();
+                togglePlay();
+            }
+        });
+        
+        // 初始化
+        createPiano();
+        createSequencer();
+    </script>
+</body>
+</html>

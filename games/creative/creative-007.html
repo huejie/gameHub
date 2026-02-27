@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>沙画艺术 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; background: #1a1a2e; min-height: 100vh; display: flex; flex-direction: column; align-items: center; color: white; padding: 20px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        h1 { font-size: 2rem; }
+        canvas { border: 3px solid #f39c12; border-radius: 10px; cursor: crosshair; background: #2d3436; }
+        .controls { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; justify-content: center; align-items: center; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; background: #f39c12; color: #2d3436; font-weight: bold; }
+        .colors { display: flex; gap: 8px; }
+        .color { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+        .color.selected { border-color: white; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: white; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-link">← 返回</a>
+    <div class="header"><h1>🏜️ 沙画艺术</h1><p>用沙子创作艺术！</p></div>
+    <div class="controls">
+        <div class="colors" id="colors"></div>
+        <button onclick="clearCanvas()">清空</button>
+        <button onclick="saveCanvas()">保存</button>
+    </div>
+    <canvas id="canvas" width="400" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#1abc9c', '#e67e22'];
+        let currentColor = colors[0];
+        let isDrawing = false;
+        let particles = [];
+        
+        // Initialize
+        ctx.fillStyle = '#2d3436';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Colors
+        const colorsDiv = document.getElementById('colors');
+        colors.forEach(color => {
+            const div = document.createElement('div');
+            div.className = 'color' + (color === currentColor ? ' selected' : '');
+            div.style.background = color;
+            div.onclick = () => {
+                document.querySelectorAll('.color').forEach(c => c.classList.remove('selected'));
+                div.classList.add('selected');
+                currentColor = color;
+            };
+            colorsDiv.appendChild(div);
+        });
+        
+        function addSand(x, y) {
+            for (let i = 0; i < 5; i++) {
+                particles.push({
+                    x: x + (Math.random() - 0.5) * 10,
+                    y: y + (Math.random() - 0.5) * 10,
+                    color: currentColor,
+                    vy: Math.random() * 2
+                });
+            }
+        }
+        
+        function update() {
+            particles.forEach(p => {
+                p.y += p.vy;
+                if (p.y < canvas.height) {
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(p.x, p.y, 2, 2);
+                }
+            });
+            particles = particles.filter(p => p.y < canvas.height);
+        }
+        
+        canvas.addEventListener('mousedown', e => {
+            isDrawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            addSand(x, y);
+        });
+        
+        canvas.addEventListener('mousemove', e => {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+            addSand(x, y);
+            update();
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            update();
+        });
+        
+        canvas.addEventListener('mouseleave', () => isDrawing = false);
+        
+        function clearCanvas() {
+            ctx.fillStyle = '#2d3436';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            particles = [];
+        }
+        
+        function saveCanvas() {
+            const link = document.createElement('a');
+            link.download = 'sand-art.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>

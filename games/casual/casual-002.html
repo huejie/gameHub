@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接水果 - GameHub100</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        #gameCanvas {
+            border: 3px solid #333;
+            border-radius: 10px;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            display: block;
+            margin: 20px auto;
+            cursor: none;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .back-link:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+
+        .game-over p {
+            color: #666;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍎 接水果</h1>
+        <p>移动篮子接住掉落的水果，小心炸弹！</p>
+
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-label">得分</div>
+                <div class="info-value" id="score">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">生命</div>
+                <div class="info-value" id="lives">3</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">等级</div>
+                <div class="info-value" id="level">1</div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="500" height="400"></canvas>
+
+        <div class="buttons">
+            <button class="btn-primary" id="startBtn" onclick="startGame()">🎮 开始游戏</button>
+        </div>
+
+        <a href="../index.html" class="back-link">← 返回游戏列表</a>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <h2>游戏结束！</h2>
+        <p>最终得分: <strong id="finalScore">0</strong></p>
+        <button class="btn-primary" onclick="playAgain()">再玩一次</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let basket = {
+            x: canvas.width / 2 - 40,
+            y: canvas.height - 50,
+            width: 80,
+            height: 40,
+            speed: 8
+        };
+        
+        let fruits = [];
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = false;
+        let spawnRate = 0.02;
+        
+        const fruitTypes = [
+            { emoji: '🍎', points: 10 },
+            { emoji: '🍊', points: 15 },
+            { emoji: '🍋', points: 20 },
+            { emoji: '🍇', points: 25 },
+            { emoji: '🍓', points: 30 },
+            { emoji: '💣', points: -50, isBomb: true }
+        ];
+        
+        function drawBasket() {
+            ctx.font = '40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🧺', basket.x + basket.width / 2, basket.y + basket.height);
+        }
+        
+        function drawFruits() {
+            ctx.font = '30px Arial';
+            ctx.textAlign = 'center';
+            fruits.forEach(fruit => {
+                ctx.fillText(fruit.emoji, fruit.x, fruit.y);
+            });
+        }
+        
+        function updateFruits() {
+            fruits.forEach((fruit, index) => {
+                fruit.y += fruit.speed;
+                
+                // 检测是否接住
+                if (fruit.y > basket.y - 20 &&
+                    fruit.y < basket.y + basket.height &&
+                    fruit.x > basket.x &&
+                    fruit.x < basket.x + basket.width) {
+                    
+                    if (fruit.isBomb) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        if (lives <= 0) {
+                            gameOver();
+                        }
+                    } else {
+                        score += fruit.points;
+                        document.getElementById('score').textContent = score;
+                        
+                        // 升级
+                        if (score >= level * 100) {
+                            level++;
+                            spawnRate += 0.005;
+                            document.getElementById('level').textContent = level;
+                        }
+                    }
+                    
+                    fruits.splice(index, 1);
+                }
+                
+                // 超出屏幕
+                if (fruit.y > canvas.height) {
+                    if (!fruit.isBomb) {
+                        lives--;
+                        document.getElementById('lives').textContent = lives;
+                        if (lives <= 0) {
+                            gameOver();
+                        }
+                    }
+                    fruits.splice(index, 1);
+                }
+            });
+        }
+        
+        function spawnFruit() {
+            if (Math.random() < spawnRate) {
+                const type = fruitTypes[Math.floor(Math.random() * fruitTypes.length)];
+                fruits.push({
+                    x: Math.random() * (canvas.width - 40) + 20,
+                    y: -20,
+                    speed: 2 + Math.random() * 2 + level * 0.5,
+                    ...type
+                });
+            }
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBasket();
+            drawFruits();
+            
+            updateFruits();
+            spawnFruit();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 鼠标控制
+        canvas.addEventListener('mousemove', (e) => {
+            if (!gameRunning) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            
+            basket.x = mouseX - basket.width / 2;
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+        });
+        
+        // 触摸控制
+        canvas.addEventListener('touchmove', (e) => {
+            if (!gameRunning) return;
+            e.preventDefault();
+            
+            const rect = canvas.getBoundingClientRect();
+            const touchX = e.touches[0].clientX - rect.left;
+            
+            basket.x = touchX - basket.width / 2;
+            basket.x = Math.max(0, Math.min(canvas.width - basket.width, basket.x));
+        });
+        
+        function startGame() {
+            document.getElementById('startBtn').disabled = true;
+            gameRunning = true;
+            score = 0;
+            lives = 3;
+            level = 1;
+            spawnRate = 0.02;
+            fruits = [];
+            basket.x = canvas.width / 2 - 40;
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('lives').textContent = lives;
+            document.getElementById('level').textContent = level;
+            
+            gameLoop();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').classList.add('show');
+        }
+        
+        function playAgain() {
+            document.getElementById('gameOver').classList.remove('show');
+            startGame();
+        }
+    </script>
+</body>
+</html>
