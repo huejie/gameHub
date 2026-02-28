@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>太空跳跃 - GameHub100</title>
+    <title>抓娃娃 - GameHub100</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Arial', sans-serif;
-            background: #0a0a1a;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -17,188 +17,288 @@
             padding: 20px;
         }
         .header { text-align: center; margin-bottom: 15px; }
-        h1 { font-size: 2rem; }
-        canvas { border: 2px solid #9b59b6; border-radius: 10px; display: block; }
+        h1 { font-size: 2rem; margin-bottom: 5px; }
+        canvas { border: 3px solid #fff; border-radius: 10px; display: block; background: #2c3e50; }
         .stats { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
         .stat { text-align: center; }
-        .stat-value { font-size: 1.5rem; font-weight: bold; color: #9b59b6; }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #f1c40f; }
         .controls { display: flex; justify-content: center; gap: 10px; margin-top: 15px; }
         button {
             padding: 12px 25px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            background: #9b59b6;
+            background: #e74c3c;
             color: white;
             font-weight: bold;
+            font-size: 1rem;
         }
-        button:hover { background: #8e44ad; }
-        .back-link { position: fixed; top: 15px; left: 15px; color: #9b59b6; text-decoration: none; }
+        button:hover { background: #c0392b; }
+        button:disabled { background: #7f8c8d; cursor: not-allowed; }
+        .back-link { position: fixed; top: 15px; left: 15px; color: #f1c40f; text-decoration: none; }
+        .instructions { margin-top: 10px; text-align: center; font-size: 0.9rem; opacity: 0.8; }
     </style>
 </head>
 <body>
-    <a href="../index.html" class="back-link">← 返回</a>
+    <a href="../../index.html" class="back-link">← 返回</a>
     <div class="header">
-        <h1>🚀 太空跳跃</h1>
-        <p>左右移动，跳上平台不断上升！</p>
+        <h1>🧸 抓娃娃</h1>
+        <p>控制抓手，抓取可爱的娃娃！</p>
     </div>
     <div class="stats">
-        <div class="stat"><div class="stat-value" id="score">0</div><div>高度</div></div>
-        <div class="stat"><div class="stat-value" id="high">0</div><div>最高</div></div>
+        <div class="stat"><div class="stat-value" id="score">0</div><div>得分</div></div>
+        <div class="stat"><div class="stat-value" id="caught">0</div><div>抓到</div></div>
+        <div class="stat"><div class="stat-value" id="time">60</div><div>时间</div></div>
     </div>
-    <canvas id="gameCanvas" width="300" height="500"></canvas>
+    <canvas id="gameCanvas" width="400" height="500"></canvas>
     <div class="controls">
-        <button onclick="startGame()">开始游戏</button>
+        <button id="startBtn" onclick="startGame()">开始游戏</button>
+        <button id="grabBtn" onclick="grab()" disabled>抓取 (空格)</button>
     </div>
+    <div class="instructions">
+        使用 ← → 方向键移动抓手 | 空格键抓取
+    </div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        
-        let player, platforms, stars;
-        let score = 0, highScore = 0;
+        const startBtn = document.getElementById('startBtn');
+        const grabBtn = document.getElementById('grabBtn');
+
+        let claw, dolls, hook;
+        let score = 0, caught = 0, timeLeft = 60;
         let gameRunning = false;
+        let gameTimer;
         let keys = {};
-        
+
+        const dollEmojis = ['🧸', '🐰', '🐻', '🐼', '🐨', '🦊', '🐯', '🦁'];
+
         function init() {
-            player = {x: canvas.width/2, y: canvas.height - 50, vx: 0, vy: 0, size: 20};
-            platforms = [];
+            claw = { x: canvas.width / 2, y: 30, width: 60, speed: 5 };
+            hook = { x: claw.x, y: claw.y + 30, length: 30, maxLength: 350, extending: false, retracting: false, grabbed: null };
+            dolls = [];
             score = 0;
-            
-            // Initial platforms
+            caught = 0;
+            timeLeft = 60;
+
+            // 生成娃娃
             for (let i = 0; i < 8; i++) {
-                platforms.push({
-                    x: Math.random() * (canvas.width - 60),
-                    y: canvas.height - i * 70,
-                    width: 60,
-                    height: 10,
-                    type: Math.random() < 0.2 ? 'moving' : 'static',
-                    vx: (Math.random() - 0.5) * 2
+                dolls.push({
+                    x: 50 + Math.random() * (canvas.width - 100),
+                    y: 380 + Math.random() * 80,
+                    emoji: dollEmojis[Math.floor(Math.random() * dollEmojis.length)],
+                    size: 35,
+                    caught: false
                 });
             }
-            
-            // Stars
-            stars = [];
-            for (let i = 0; i < 50; i++) {
-                stars.push({x: Math.random() * canvas.width, y: Math.random() * canvas.height});
-            }
+
+            updateDisplay();
         }
-        
-        function update() {
-            if (!gameRunning) return;
-            
-            // Background
-            ctx.fillStyle = '#0a0a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Stars
-            ctx.fillStyle = '#fff';
-            stars.forEach(s => {
-                ctx.fillRect(s.x, s.y, 2, 2);
-            });
-            
-            // Player movement
-            if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -5;
-            else if (keys['ArrowRight'] || keys['KeyD']) player.vx = 5;
-            else player.vx *= 0.8;
-            
-            player.vy += 0.5;
-            player.x += player.vx;
-            player.y += player.vy;
-            
-            // Wrap around
-            if (player.x < 0) player.x = canvas.width;
-            if (player.x > canvas.width) player.x = 0;
-            
-            // Platform collision (only when falling)
-            if (player.vy > 0) {
-                platforms.forEach(p => {
-                    if (player.x > p.x && player.x < p.x + p.width &&
-                        player.y + player.size > p.y && player.y + player.size < p.y + p.height + 10) {
-                        player.vy = -12;
-                    }
-                });
-            }
-            
-            // Update platforms
-            platforms.forEach(p => {
-                if (p.type === 'moving') {
-                    p.x += p.vx;
-                    if (p.x < 0 || p.x > canvas.width - p.width) p.vx *= -1;
-                }
-            });
-            
-            // Scroll when player goes up
-            if (player.y < canvas.height / 2) {
-                const scroll = canvas.height / 2 - player.y;
-                player.y = canvas.height / 2;
-                score += Math.floor(scroll);
-                
-                platforms.forEach(p => p.y += scroll);
-                stars.forEach(s => s.y += scroll);
-                
-                // Remove off-screen platforms and add new ones
-                platforms = platforms.filter(p => p.y < canvas.height + 50);
-                while (platforms.length < 8) {
-                    platforms.push({
-                        x: Math.random() * (canvas.width - 60),
-                        y: -10,
-                        width: 60,
-                        height: 10,
-                        type: Math.random() < 0.3 ? 'moving' : 'static',
-                        vx: (Math.random() - 0.5) * 3
-                    });
-                }
-            }
-            
-            // Game over
-            if (player.y > canvas.height) {
-                gameRunning = false;
-                if (score > highScore) highScore = score;
-                document.getElementById('high').textContent = highScore;
-                setTimeout(() => alert(`游戏结束！高度: ${score}`), 100);
-                return;
-            }
-            
-            // Draw platforms
-            platforms.forEach(p => {
-                ctx.fillStyle = p.type === 'moving' ? '#e74c3c' : '#27ae60';
-                ctx.fillRect(p.x, p.y, p.width, p.height);
-            });
-            
-            // Draw player
-            ctx.fillStyle = '#9b59b6';
-            ctx.beginPath();
-            ctx.moveTo(player.x, player.y - player.size);
-            ctx.lineTo(player.x - player.size/2, player.y + player.size/2);
-            ctx.lineTo(player.x + player.size/2, player.y + player.size/2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Flame
-            if (player.vy < 0) {
-                ctx.fillStyle = '#f39c12';
-                ctx.beginPath();
-                ctx.moveTo(player.x - 5, player.y + player.size/2);
-                ctx.lineTo(player.x, player.y + player.size/2 + 10 + Math.random() * 5);
-                ctx.lineTo(player.x + 5, player.y + player.size/2);
-                ctx.closePath();
-                ctx.fill();
-            }
-            
+
+        function updateDisplay() {
             document.getElementById('score').textContent = score;
-            requestAnimationFrame(update);
+            document.getElementById('caught').textContent = caught;
+            document.getElementById('time').textContent = timeLeft;
         }
-        
-        document.addEventListener('keydown', e => keys[e.code] = true);
-        document.addEventListener('keyup', e => keys[e.code] = false);
-        
+
         function startGame() {
+            if (gameRunning) return;
             init();
             gameRunning = true;
-            update();
+            startBtn.disabled = true;
+            grabBtn.disabled = false;
+            
+            gameTimer = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+            
+            gameLoop();
         }
-        
+
+        function endGame() {
+            gameRunning = false;
+            clearInterval(gameTimer);
+            startBtn.disabled = false;
+            grabBtn.disabled = true;
+            
+            setTimeout(() => {
+                alert(`游戏结束！\n抓到: ${caught} 个娃娃\n得分: ${score}`);
+            }, 100);
+        }
+
+        function grab() {
+            if (!gameRunning || hook.extending || hook.retracting) return;
+            hook.extending = true;
+            grabBtn.disabled = true;
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // 清空画布
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制顶部轨道
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(0, 0, canvas.width, 60);
+
+            // 绘制娃娃区域
+            ctx.fillStyle = '#1a252f';
+            ctx.fillRect(0, 350, canvas.width, canvas.height - 350);
+
+            // 移动抓手
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                claw.x = Math.max(30, claw.x - claw.speed);
+            }
+            if (keys['ArrowRight'] || keys['KeyD']) {
+                claw.x = Math.min(canvas.width - 30, claw.x + claw.speed);
+            }
+
+            if (!hook.extending && !hook.retracting) {
+                hook.x = claw.x;
+            }
+
+            // 更新钩子
+            if (hook.extending) {
+                hook.length += 5;
+                if (hook.length >= hook.maxLength) {
+                    hook.extending = false;
+                    hook.retracting = true;
+                }
+                
+                // 检测碰撞
+                if (!hook.grabbed) {
+                    for (let doll of dolls) {
+                        if (!doll.caught) {
+                            const hookEndX = hook.x;
+                            const hookEndY = claw.y + hook.length;
+                            const dx = hookEndX - doll.x;
+                            const dy = hookEndY - doll.y;
+                            if (Math.sqrt(dx * dx + dy * dy) < doll.size) {
+                                hook.grabbed = doll;
+                                doll.caught = true;
+                                hook.extending = false;
+                                hook.retracting = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (hook.retracting) {
+                hook.length -= 3;
+                if (hook.length <= 30) {
+                    hook.length = 30;
+                    hook.retracting = false;
+                    grabBtn.disabled = false;
+                    
+                    if (hook.grabbed) {
+                        caught++;
+                        score += 10;
+                        hook.grabbed = null;
+                        updateDisplay();
+                        
+                        // 检查是否所有娃娃都被抓完
+                        if (dolls.every(d => d.caught)) {
+                            // 生成新的娃娃
+                            dolls = [];
+                            for (let i = 0; i < 8; i++) {
+                                dolls.push({
+                                    x: 50 + Math.random() * (canvas.width - 100),
+                                    y: 380 + Math.random() * 80,
+                                    emoji: dollEmojis[Math.floor(Math.random() * dollEmojis.length)],
+                                    size: 35,
+                                    caught: false
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 绘制绳索
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(hook.x, claw.y);
+            ctx.lineTo(hook.x, claw.y + hook.length);
+            ctx.stroke();
+
+            // 绘制钩子
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(hook.x, claw.y + hook.length, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制钩子爪
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(hook.x - 15, claw.y + hook.length + 10);
+            ctx.lineTo(hook.x, claw.y + hook.length);
+            ctx.lineTo(hook.x + 15, claw.y + hook.length + 10);
+            ctx.stroke();
+
+            // 绘制抓手
+            ctx.fillStyle = '#e74c3c';
+            ctx.fillRect(claw.x - 30, claw.y - 15, 60, 30);
+            ctx.fillStyle = '#c0392b';
+            ctx.fillRect(claw.x - 25, claw.y - 10, 50, 20);
+
+            // 绘制被抓的娃娃
+            if (hook.grabbed) {
+                hook.grabbed.x = hook.x;
+                hook.grabbed.y = claw.y + hook.length + 25;
+            }
+
+            // 绘制娃娃
+            ctx.font = '35px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let doll of dolls) {
+                if (!doll.caught || doll === hook.grabbed) {
+                    ctx.fillText(doll.emoji, doll.x, doll.y);
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                grab();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+
+        // 初始化显示
         init();
+        
+        // 绘制初始状态
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#34495e';
+        ctx.fillRect(0, 0, canvas.width, 60);
+        ctx.fillStyle = '#1a252f';
+        ctx.fillRect(0, 350, canvas.width, canvas.height - 350);
+        ctx.font = '35px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let doll of dolls) {
+            ctx.fillText(doll.emoji, doll.x, doll.y);
+        }
     </script>
 </body>
 </html>

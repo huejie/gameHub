@@ -31,7 +31,7 @@
 ### 本地运行
 ```bash
 # 克隆仓库
-git clone https://github.com/huejie/game-hub-100.git
+git clone https://github.com/huejie/gameHub.git
 
 # 进入目录
 cd game-hub-100
