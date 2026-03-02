@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>接金币 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 { color: #f5576c; margin-bottom: 10px; }
+        .stats { display: flex; justify-content: space-around; margin: 10px 0; }
+        .stat { background: #f093fb; color: white; padding: 8px 15px; border-radius: 8px; }
+        canvas { border: 2px solid #f5576c; border-radius: 8px; display: block; margin: 10px auto; }
+        .btn {
+            background: #f5576c;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #f093fb; }
+        .back { display: block; margin-top: 15px; color: #f5576c; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 接金币</h1>
+        <div class="stats">
+            <div class="stat">分数: <span id="score">0</span></div>
+            <div class="stat">时间: <span id="time">30</span>s</div>
+        </div>
+        <canvas id="game" width="400" height="400"></canvas>
+        <button class="btn" onclick="start()">开始游戏</button>
+        <a href="../index.html" class="back">← 返回游戏列表</a>
+    </div>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        let score = 0;
+        let time = 30;
+        let running = false;
+        let timer = null;
+
+        const basket = { x: 175, y: 360, w: 50, h: 40 };
+        const coins = [];
+
+        class Coin {
+            constructor() {
+                this.x = Math.random() * 360 + 20;
+                this.y = -20;
+                this.r = 15;
+                this.speed = Math.random() * 2 + 2;
+                this.value = Math.random() > 0.8 ? 20 : 10; // 20%概率是金币
+            }
+            
+            update() {
+                this.y += this.speed;
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = this.value === 20 ? '#ffd700' : '#f5576c';
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.value, this.x, this.y + 4);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 400, 400);
+            
+            // 篮子
+            ctx.fillStyle = '#f5576c';
+            ctx.fillRect(basket.x, basket.y, basket.w, basket.h);
+            ctx.fillStyle = 'white';
+            ctx.font = '20px Arial';
+            ctx.fillText('🧺', basket.x + 25, basket.y + 28);
+            
+            // 金币
+            coins.forEach(c => c.draw());
+        }
+
+        function update() {
+            if (!running) return;
+            
+            // 随机生成金币
+            if (Math.random() < 0.03) {
+                coins.push(new Coin());
+            }
+            
+            // 更新金币
+            for (let i = coins.length - 1; i >= 0; i--) {
+                coins[i].update();
+                
+                // 碰撞检测
+                if (coins[i].y + coins[i].r > basket.y && 
+                    coins[i].x > basket.x && 
+                    coins[i].x < basket.x + basket.w) {
+                    score += coins[i].value;
+                    document.getElementById('score').textContent = score;
+                    coins.splice(i, 1);
+                    continue;
+                }
+                
+                // 掉出屏幕
+                if (coins[i].y > 420) {
+                    coins.splice(i, 1);
+                }
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            basket.x = e.clientX - rect.left - basket.w / 2;
+            basket.x = Math.max(0, Math.min(350, basket.x));
+        };
+
+        canvas.ontouchmove = (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            basket.x = e.touches[0].clientX - rect.left - basket.w / 2;
+            basket.x = Math.max(0, Math.min(350, basket.x));
+        };
+
+        function start() {
+            score = 0;
+            time = 30;
+            coins.length = 0;
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = time;
+            running = true;
+            
+            clearInterval(timer);
+            timer = setInterval(() => {
+                time--;
+                document.getElementById('time').textContent = time;
+                if (time <= 0) {
+                    running = false;
+                    clearInterval(timer);
+                    alert('⏰ 时间到！\n最终分数: ' + score);
+                }
+            }, 1000);
+            
+            update();
+        }
+
+        draw();
+    </script>
+</body>
+</html>

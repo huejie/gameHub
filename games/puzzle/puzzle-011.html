@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字拼图 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 { color: #667eea; margin-bottom: 10px; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { background: #667eea; color: white; padding: 10px 20px; border-radius: 8px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            gap: 5px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+        .tile {
+            width: 70px; height: 70px;
+            background: #764ba2;
+            color: white;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 24px; font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tile:hover { transform: scale(1.05); }
+        .tile.empty { background: #ddd; cursor: default; }
+        .tile.empty:hover { transform: none; }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #764ba2; }
+        .back { display: block; margin-top: 20px; color: #667eea; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧩 数字拼图</h1>
+        <div class="stats">
+            <div class="stat">步数: <span id="moves">0</span></div>
+            <div class="stat">时间: <span id="time">0</span>s</div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <button class="btn" onclick="shuffle()">打乱</button>
+        <button class="btn" onclick="reset()">重置</button>
+        <a href="../index.html" class="back">← 返回游戏列表</a>
+    </div>
+    <script>
+        let tiles = [];
+        let moves = 0;
+        let time = 0;
+        let timer = null;
+
+        function init() {
+            tiles = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0];
+            moves = 0;
+            time = 0;
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('time').textContent = time;
+            clearInterval(timer);
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            tiles.forEach((tile, i) => {
+                const div = document.createElement('div');
+                div.className = 'tile' + (tile === 0 ? ' empty' : '');
+                div.textContent = tile === 0 ? '' : tile;
+                div.onclick = () => move(i);
+                grid.appendChild(div);
+            });
+        }
+
+        function move(index) {
+            const emptyIndex = tiles.indexOf(0);
+            const row = Math.floor(index / 4);
+            const col = index % 4;
+            const emptyRow = Math.floor(emptyIndex / 4);
+            const emptyCol = emptyIndex % 4;
+            
+            if (Math.abs(row - emptyRow) + Math.abs(col - emptyCol) === 1) {
+                [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+                moves++;
+                document.getElementById('moves').textContent = moves;
+                if (!timer) {
+                    timer = setInterval(() => {
+                        time++;
+                        document.getElementById('time').textContent = time;
+                    }, 1000);
+                }
+                render();
+                checkWin();
+            }
+        }
+
+        function shuffle() {
+            for (let i = 0; i < 100; i++) {
+                const emptyIndex = tiles.indexOf(0);
+                const moves = [];
+                if (emptyIndex > 3) moves.push(emptyIndex - 4);
+                if (emptyIndex < 12) moves.push(emptyIndex + 4);
+                if (emptyIndex % 4 > 0) moves.push(emptyIndex - 1);
+                if (emptyIndex % 4 < 3) moves.push(emptyIndex + 1);
+                const randomMove = moves[Math.floor(Math.random() * moves.length)];
+                [tiles[emptyIndex], tiles[randomMove]] = [tiles[randomMove], tiles[emptyIndex]];
+            }
+            moves = 0;
+            time = 0;
+            clearInterval(timer);
+            timer = null;
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('time').textContent = time;
+            render();
+        }
+
+        function reset() {
+            init();
+        }
+
+        function checkWin() {
+            const win = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0];
+            if (tiles.every((tile, i) => tile === win[i])) {
+                clearInterval(timer);
+                setTimeout(() => alert('🎉 恭喜完成！\n步数: ' + moves + '\n时间: ' + time + '秒'), 100);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

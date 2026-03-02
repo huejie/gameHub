@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打气球 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 { color: #4facfe; margin-bottom: 10px; }
+        .stats { display: flex; justify-content: space-around; margin: 10px 0; }
+        .stat { background: #00f2fe; color: white; padding: 8px 15px; border-radius: 8px; }
+        canvas { border: 2px solid #4facfe; border-radius: 8px; display: block; margin: 10px auto; cursor: crosshair; }
+        .btn {
+            background: #4facfe;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #00f2fe; }
+        .back { display: block; margin-top: 15px; color: #4facfe; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎈 打气球</h1>
+        <div class="stats">
+            <div class="stat">分数: <span id="score">0</span></div>
+            <div class="stat">时间: <span id="time">30</span>s</div>
+        </div>
+        <canvas id="game" width="400" height="400"></canvas>
+        <button class="btn" onclick="start()">开始游戏</button>
+        <a href="../index.html" class="back">← 返回游戏列表</a>
+    </div>
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        let score = 0;
+        let time = 30;
+        let running = false;
+        let timer = null;
+        const balloons = [];
+        const colors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6'];
+
+        class Balloon {
+            constructor() {
+                this.x = Math.random() * 340 + 30;
+                this.y = 420;
+                this.r = Math.random() * 15 + 20;
+                this.speed = Math.random() * 1.5 + 1;
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+                this.wobble = Math.random() * 2 - 1;
+            }
+            
+            update() {
+                this.y -= this.speed;
+                this.x += this.wobble;
+                if (this.x < 30 || this.x > 370) this.wobble *= -1;
+            }
+            
+            draw() {
+                // 气球
+                ctx.beginPath();
+                ctx.ellipse(this.x, this.y, this.r, this.r * 1.2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // 绳子
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y + this.r * 1.2);
+                ctx.lineTo(this.x, this.y + this.r * 1.2 + 20);
+                ctx.strokeStyle = '#666';
+                ctx.stroke();
+            }
+            
+            isHit(mx, my) {
+                const dx = mx - this.x;
+                const dy = my - this.y;
+                return Math.sqrt(dx * dx + dy * dy) < this.r * 1.2;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, 400, 400);
+            
+            // 背景
+            ctx.fillStyle = '#e8f4f8';
+            ctx.fillRect(0, 0, 400, 400);
+            
+            // 气球
+            balloons.forEach(b => b.draw());
+        }
+
+        function update() {
+            if (!running) return;
+            
+            // 随机生成气球
+            if (Math.random() < 0.04) {
+                balloons.push(new Balloon());
+            }
+            
+            // 更新气球
+            for (let i = balloons.length - 1; i >= 0; i--) {
+                balloons[i].update();
+                
+                // 飞出屏幕
+                if (balloons[i].y < -50) {
+                    balloons.splice(i, 1);
+                }
+            }
+            
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        canvas.onclick = (e) => {
+            if (!running) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            
+            for (let i = balloons.length - 1; i >= 0; i--) {
+                if (balloons[i].isHit(mx, my)) {
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                    balloons.splice(i, 1);
+                    break;
+                }
+            }
+        };
+
+        canvas.ontouchstart = (e) => {
+            if (!running) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.touches[0].clientX - rect.left;
+            const my = e.touches[0].clientY - rect.top;
+            
+            for (let i = balloons.length - 1; i >= 0; i--) {
+                if (balloons[i].isHit(mx, my)) {
+                    score += 10;
+                    document.getElementById('score').textContent = score;
+                    balloons.splice(i, 1);
+                    break;
+                }
+            }
+        };
+
+        function start() {
+            score = 0;
+            time = 30;
+            balloons.length = 0;
+            document.getElementById('score').textContent = score;
+            document.getElementById('time').textContent = time;
+            running = true;
+            
+            clearInterval(timer);
+            timer = setInterval(() => {
+                time--;
+                document.getElementById('time').textContent = time;
+                if (time <= 0) {
+                    running = false;
+                    clearInterval(timer);
+                    alert('⏰ 时间到！\n最终分数: ' + score);
+                }
+            }, 1000);
+            
+            update();
+        }
+
+        draw();
+    </script>
+</body>
+</html>

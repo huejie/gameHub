@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆翻牌 - GameHub100</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 { color: #11998e; margin-bottom: 10px; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat { background: #38ef7d; color: white; padding: 10px 20px; border-radius: 8px; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 70px);
+            gap: 10px;
+            margin: 20px auto;
+            width: fit-content;
+        }
+        .card {
+            width: 70px; height: 70px;
+            background: #11998e;
+            border-radius: 8px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        .card:hover { transform: scale(1.05); }
+        .card.flipped { background: white; border: 2px solid #11998e; }
+        .card.matched { background: #38ef7d; cursor: default; }
+        .btn {
+            background: #11998e;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover { background: #38ef7d; }
+        .back { display: block; margin-top: 20px; color: #11998e; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎴 记忆翻牌</h1>
+        <div class="stats">
+            <div class="stat">步数: <span id="moves">0</span></div>
+            <div class="stat">配对: <span id="pairs">0</span>/8</div>
+        </div>
+        <div class="grid" id="grid"></div>
+        <button class="btn" onclick="init()">重新开始</button>
+        <a href="../index.html" class="back">← 返回游戏列表</a>
+    </div>
+    <script>
+        const emojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🥝', '🍑'];
+        let cards = [];
+        let flipped = [];
+        let matched = 0;
+        let moves = 0;
+        let canFlip = true;
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function init() {
+            cards = shuffle([...emojis, ...emojis]);
+            flipped = [];
+            matched = 0;
+            moves = 0;
+            canFlip = true;
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('pairs').textContent = matched;
+            render();
+        }
+
+        function render() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            cards.forEach((emoji, i) => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.dataset.index = i;
+                div.onclick = () => flip(i);
+                grid.appendChild(div);
+            });
+        }
+
+        function flip(index) {
+            if (!canFlip) return;
+            const card = document.querySelectorAll('.card')[index];
+            if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
+            
+            card.classList.add('flipped');
+            card.textContent = cards[index];
+            flipped.push(index);
+            
+            if (flipped.length === 2) {
+                moves++;
+                document.getElementById('moves').textContent = moves;
+                canFlip = false;
+                
+                const [i1, i2] = flipped;
+                if (cards[i1] === cards[i2]) {
+                    document.querySelectorAll('.card')[i1].classList.add('matched');
+                    document.querySelectorAll('.card')[i2].classList.add('matched');
+                    matched++;
+                    document.getElementById('pairs').textContent = matched;
+                    flipped = [];
+                    canFlip = true;
+                    
+                    if (matched === 8) {
+                        setTimeout(() => alert('🎉 恭喜完成！\n步数: ' + moves), 300);
+                    }
+                } else {
+                    setTimeout(() => {
+                        document.querySelectorAll('.card')[i1].classList.remove('flipped');
+                        document.querySelectorAll('.card')[i1].textContent = '';
+                        document.querySelectorAll('.card')[i2].classList.remove('flipped');
+                        document.querySelectorAll('.card')[i2].textContent = '';
+                        flipped = [];
+                        canFlip = true;
+                    }, 800);
+                }
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
