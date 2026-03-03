@@ -56,7 +56,7 @@ const gamesData = [
     { id: 'shooting-004', name: '僵尸射击', category: 'shooting', description: '消灭来袭的僵尸', tags: ['僵尸', '射击', '生存'], difficulty: '中等', icon: '🧟' },
     { id: 'shooting-005', name: '飞碟射击', category: 'shooting', description: '射击飞行的飞碟', tags: ['飞碟', '射击', '瞄准'], difficulty: '中等', icon: '🛸' },
     { id: 'shooting-006', name: '狙击手', category: 'shooting', description: '远距离精确射击', tags: ['狙击', '精度', '瞄准'], difficulty: '困难', icon: '🔭' },
-    { id: 'action-012', name: '坦克大战', category: 'shooting', description: '驾驶坦克消灭敌人', tags: ['坦克', '射击', '对战'], difficulty: '中等', icon: '🛡️' },
+    { id: 'action-012', name: '坦克大战', category: 'action', description: '驾驶坦克消灭敌人', tags: ['坦克', '射击', '对战'], difficulty: '中等', icon: '🛡️' },
     { id: 'shooting-008', name: '弓箭射击', category: 'shooting', description: '用弓箭射击目标', tags: ['弓箭', '射击', '精度'], difficulty: '中等', icon: '🏹' },
     { id: 'shooting-009', name: '水果忍者', category: 'shooting', description: '切开飞来的水果', tags: ['水果', '切割', '反应'], difficulty: '简单', icon: '🍉' },
     { id: 'shooting-010', name: '鸭子射击', category: 'shooting', description: '经典的打鸭子游戏', tags: ['鸭子', '射击', '经典'], difficulty: '简单', icon: '🦆' },
